@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: bill-assistant
+  # ====================================================================
+  # 1. DATABASE CONFIGURATION (PostgreSQL + PGVector)
+  #    Assumes you are running PGVector in Docker (see README)
+  # ====================================================================
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bill_db_store
+    username: bill_db_user
+    password: bill_db_password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+  # ====================================================================
+  # 2. SPRING AI CONFIGURATION
+  # ====================================================================
+  ai:
+    vertex:
+      ai:
+        embedding:
+          project-id: gc-vertex-spring-ai-project
+          location: us-central1
+          text:
+            options:
+              model: gemini-embedding-004
+        gemini:
+          project-id: gc-vertex-spring-ai-project
+          location: us-central1
+          chat:
+            options:
+              model: gemini-2.0-flash
+              temperature: 0.5
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        remove-existing-vector-store-table: true
+        index-type: HNSW
+        dimensions: 768
+        distance-type: COSINE_DISTANCE
+        max-document-batch-size: 10000
+
+server:
+  port: 8080
+  servlet:
+    context-path: /bill-payment-assistant

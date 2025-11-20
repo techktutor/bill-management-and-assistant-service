@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: 'pgvector/pgvector:pg16'
+    container_name: bill-assistant-db-store
+    restart: always
+    environment:
+      - 'POSTGRES_DB=bill_db_store'
+      - 'POSTGRES_PASSWORD=bill_db_password'
+      - 'POSTGRES_USER=bill_db_user'
+    labels:
+      - "org.springframework.boot.service-connection=postgres"
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U bill_db_user -d bill_db_store" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_preload_libraries=vector"
