@@ -25,23 +25,34 @@ public class RagConfig {
                 .build();
     }
 
+    /**
+     * Global RetrievalAugmentationAdvisor used by RagQueryService.runRagQuery().
+     * <p>
+     * It will:
+     * - augment the user's query with retrieved context ("ContextualQueryAugmenter")
+     * - use a bill-focused answer template for the final response
+     */
     @Bean
     public RetrievalAugmentationAdvisor retrievalAugmentationAdvisor(VectorStoreDocumentRetriever vectorStoreDocumentRetriever) {
         return RetrievalAugmentationAdvisor.builder()
                 .documentRetriever(vectorStoreDocumentRetriever)
                 .queryAugmenter(ContextualQueryAugmenter.builder()
-                        .promptTemplate(PromptTemplate.builder().template("""
-                                Use the following extracted document context to answer the user query.
-                                
-                                Query:
-                                {query}
-                                
-                                Context:
-                                {context}
-                                
-                                Answer:
-                                """
-                        ).build())
+                        .promptTemplate(PromptTemplate.builder()
+                                .template("""
+                                        You are an AI assistant helping a user manage and understand their bills.
+                                        
+                                        Use ONLY the context provided below to answer the question.
+                                        If the context is missing something, say so clearly.
+                                        
+                                        Question:
+                                        {query}
+                                        
+                                        Context:
+                                        {context}
+                                        
+                                        Answer (be concise, structured, and mention specific bill details when relevant):
+                                        """)
+                                .build())
                         .allowEmptyContext(true)
                         .build())
                 .build();
