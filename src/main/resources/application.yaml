@@ -1,4 +1,7 @@
 spring:
+  profiles:
+    active:
+      - local
   application:
     name: bill-assistant
   # ====================================================================
@@ -17,20 +20,25 @@ spring:
   # 2. SPRING AI CONFIGURATION
   # ====================================================================
   ai:
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: ALWAYS # creates a default table for chat memory - SPRING_AI_CHAT_MEMORY
     vertex:
       ai:
         embedding:
-          project-id: gc-vertex-spring-ai-project
-          location: us-central1
+          project-id: ${VERTEX_PROJECT_ID:gc-vertex-spring-ai-project}
+          location: ${VERTEX_LOCATION:us-central1}
           text:
             options:
-              model: gemini-embedding-004
+              model: ${VERTEX_EMBEDDING_MODEL:text-embedding-004}
         gemini:
-          project-id: gc-vertex-spring-ai-project
-          location: us-central1
+          project-id: ${VERTEX_PROJECT_ID:gc-vertex-spring-ai-project}
+          location: ${VERTEX_LOCATION:us-central1}
           chat:
             options:
-              model: gemini-2.0-flash
+              model: ${VERTEX_GEMINI_MODEL:gemini-2.0-flash}
               temperature: 0.5
     vectorstore:
       pgvector:

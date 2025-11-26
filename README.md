@@ -71,3 +71,23 @@ You went beyond the original plan by:
 - Scheduled payment engine
 
 This enhances the original vision and makes the system independent of Stripe.
+
+User -> ChatController (POST /api/chat) -> AssistantOrchestratorService.processMessage
+-> MemoryAdvisor (ChatMemory) -> RetrievalAugmentationAdvisor -> VectorStoreDocumentRetriever
+-> VectorStore (pgvector) -> returns Documents -> Context assembled
+-> ChatClient prompt (system + user + context + tools)
+-> LLM returns text OR structured tool-invocation
+-> If tool-invocation: Orchestrator ensures tool confirmation policy -> execute tool (PaymentToolAdapter/BillToolAdapter)
+-> Tool may call MakePaymentService or ScheduledPaymentService
+-> Persist operations in DB (payments, scheduled payments)
+-> Tool returns structured output -> ChatClient consumes tool output -> final answer returned to user
+
+
+Separate ingestion path:
+User uploads file -> IngestController -> ETLPipelineService
+-> Tika extraction -> TokenTextSplitter -> VectorStore.add(documents with metadata)
+-> Ingest audit log written (requestId) -> Documents available for retrieval
+
+
+Scheduled execution path:
+ScheduledJob PaymentExecutionService (cron) -> finds due scheduled payments -> executes via MakePaymentService -> updates ScheduledPaymentEntity

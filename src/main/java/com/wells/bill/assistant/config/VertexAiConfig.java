@@ -8,11 +8,17 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class VertexAiConfig {
 
+    private final VertexAiProperties properties;
+
+    public VertexAiConfig(VertexAiProperties properties) {
+        this.properties = properties;
+    }
+
     @Bean
     public VertexAiEmbeddingConnectionDetails vertexAiEmbeddingConnectionDetails() {
         return VertexAiEmbeddingConnectionDetails.builder()
-                .projectId("gc-vertex-spring-ai-project")
-                .location("us-central1").build();
+                .projectId(properties.getProjectId())
+                .location(properties.getLocation()).build();
     }
 
     @Bean
@@ -25,4 +31,3 @@ public class VertexAiConfig {
         return builder.build();
     }
 }
-

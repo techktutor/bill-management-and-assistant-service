@@ -1,26 +1,35 @@
 package com.wells.bill.assistant.controller;
 
+import com.wells.bill.assistant.model.ChatRequest;
+import com.wells.bill.assistant.model.ChatResponse;
 import com.wells.bill.assistant.service.AssistantOrchestratorService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/chat")
 @RequiredArgsConstructor
+@RequestMapping("/api/chat")
 public class ChatController {
+
+    private static final Logger log = LoggerFactory.getLogger(ChatController.class);
 
     private final AssistantOrchestratorService orchestrator;
 
     @PostMapping
-    public Map<String, String> chat(@RequestBody Map<String, String> body) {
-        String convId = body.getOrDefault("conversationId", "default");
-        String message = body.get("message");
-        String reply = orchestrator.processMessage(convId, message);
-        return Map.of("reply", reply);
+    public ResponseEntity<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
+        log.info("Received chat request: conversationId={}", request.getConversationId());
+        String reply = orchestrator.processMessage(request.getConversationId(), request.getMessage());
+        return ResponseEntity.ok(new ChatResponse(request.getConversationId(), reply, true));
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        return ResponseEntity.ok(Map.of("status", "Chat service is healthy"));
     }
 }

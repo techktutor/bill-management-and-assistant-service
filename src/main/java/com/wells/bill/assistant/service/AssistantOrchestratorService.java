@@ -1,139 +1,80 @@
 package com.wells.bill.assistant.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wells.bill.assistant.tools.BillToolAdaptor;
+import com.wells.bill.assistant.tools.PaymentToolAdapter;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.MessageWindowChatMemory;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.model.Generation;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
+import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
 public class AssistantOrchestratorService {
 
+    private static final Logger log = LoggerFactory.getLogger(AssistantOrchestratorService.class);
+
+    private static final String DEFAULT_RESPONSE = "I apologize, but I encountered an error processing your request. Please try again.";
+    private static final String SYSTEM_PROMPT = """
+            You are an AI Bill Advisor assistant. Your responsibilities:
+            - Answer questions about user bills using retrieved billing data.
+            - Help users schedule and make payments using available tools.
+            - Provide helpful suggestions for bill management.
+            - Understanding bill details
+            - Managing payments
+            - Retrieving relevant bill information
+            
+            Guidelines:
+            - If you don't have enough billing data to answer, say: "I do not have sufficient information from your bills to answer this question."
+            - Use payment tools only when explicitly requested by the user.
+            - Always confirm payment actions before executing.
+            - Never execute payments without explicit user confirmation.
+            - Be concise, factual, and safe.
+            """;
+
+    private final ChatMemory chatMemory;
     private final ChatClient chatClient;
-    private final RagQueryService ragQueryService;
-    private final MessageWindowChatMemory chatMemory;
-    private final PaymentsToolAdapter paymentsToolAdapter;
-    private final BillAnalysisService billAnalysisService;
+    private final BillToolAdaptor billToolAdaptor;
+    private final PaymentToolAdapter paymentToolAdapter;
     private final RetrievalAugmentationAdvisor ragAdvisor;
 
     public String processMessage(String conversationId, String userMessage) {
-        // 1) add user message to memory
-        chatMemory.add(conversationId, new UserMessage(userMessage));
-        List<Message> history = chatMemory.get(conversationId);
-
-        // 2) Retrieve relevant chunks (this is where RagQueryService is ACTUALLY used)
-        String retrievedContext = ragQueryService.buildContextString(userMessage);
-
-        // 3) Build final prompt
-        Prompt prompt = getPrompt(userMessage, history, retrievedContext);
-
-        // 4) Call model with RAG advisor + tools
-        ChatResponse response = chatClient
-                .prompt(prompt)
-                .advisors(ragAdvisor)
-                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
-                .advisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
-                .tools(paymentsToolAdapter, billAnalysisService)
-                .call()
-                .chatResponse();
-
-        // 5) Extract generation & assistant message
-        assert response != null;
-        Generation gen = response.getResults().getFirst();
-        AssistantMessage assistantMessage = gen.getOutput();
-
-        // 6) First, default textual response
-        String aiText = assistantMessage.getText();
-
-        // 7) Check tool calls (AssistantMessage.ToolCall) and execute the first one if present
-        List<AssistantMessage.ToolCall> toolCalls = assistantMessage.getToolCalls();
-        if (!toolCalls.isEmpty()) {
-            var call = toolCalls.getFirst();
-            String toolName = call.name();
-            String rawArgs = call.arguments();
-            try {
-                Map<String, Object> args = (Map<String, Object>) safeParseArgs(rawArgs);
-                // ROUTE TOOL CALL
-                aiText = switch (toolName) {
-                    case "payBill", "schedulePayment" -> paymentsToolAdapter.executeTool(toolName, args);
-
-                    case "classifyBill", "extractBillFields", "compareBills",
-                         "detectAnomaly", "trendAnalysis",
-                         "summarizeBill", "billSuggestion" -> billAnalysisService.executeAnalysisTool(toolName, args);
-
-                    default -> "Unknown tool: " + toolName;
-                };
-            } catch (Exception e) {
-                // Try a forgiving parser (e.g., clean JSON-ish string) before failing
-                aiText = "Error parsing tool arguments: " + e.getMessage();
-            }
-        }
-        // 7) Save memory
-        chatMemory.add(conversationId, assistantMessage);
-        return aiText;
-    }
-
-    private static Prompt getPrompt(String userMessage, List<Message> history, String retrievedContext) {
-        String finalPromptText = """
-                You are an AI Bill Advisor. Use retrieved billing data to answer questions.
-                
-                ===================
-                Conversation History:
-                %s
-                ===================
-                
-                Retrieved Billing Data:
-                %s
-                ===================
-                
-                User Query:
-                %s
-                
-                If retrieved data does not contain the answer, say:
-                "I do not have enough info from your bill data."
-                """.formatted(history.stream().map(Message::getText).reduce("", (a,b)->a+"\n"+b),
-                retrievedContext, userMessage);
-
-        return new Prompt(new UserMessage(finalPromptText));
-    }
-
-    private Map<?, ?> safeParseArgs(String rawArgs) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        if (rawArgs == null || rawArgs.isBlank()) {
-            return Map.of();
-        }
         try {
-            // Try direct JSON
-            return objectMapper.readValue(rawArgs, Map.class);
-        } catch (Exception e1) {
-            try {
-                // Try to unescape and parse again
-                String cleaned = rawArgs.replace("\\", "");
-                return objectMapper.readValue(cleaned, Map.class);
-            } catch (Exception e2) {
-                try {
-                    // Fix missing quotes around field names
-                    String fixed = rawArgs
-                            .replace("=", ":")
-                            .replaceAll("([a-zA-Z0-9_]+):", "\"$1\":");
-                    return objectMapper.readValue(fixed, Map.class);
-                } catch (Exception e3) {
-                    return Map.of("raw", rawArgs); // fallback
-                }
+            log.info("Processing message: conversationId={} message={}", conversationId, userMessage);
+
+            var memoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory)
+                    .conversationId(conversationId)
+                    .build();
+
+            // Call model with proper advisor chain
+            String response = chatClient
+                    .prompt()
+                    .system(SYSTEM_PROMPT)
+                    .user(userMessage)
+                    .advisors(memoryAdvisor)  // Memory advisor manages conversation history
+                    .advisors(ragAdvisor)  // RAG advisor retrieves and augments context
+                    .tools(paymentToolAdapter, billToolAdaptor)  // Register available tools
+                    .call()
+                    .content();
+
+            if (response == null || response.isBlank()) {
+                log.warn("Empty response from LLM for conversationId={}", conversationId);
+                return DEFAULT_RESPONSE;
             }
+
+            log.info("Message processed successfully for conversationId={}", conversationId);
+            return response;
+        } catch (IllegalArgumentException e) {
+            log.error("Validation error in processMessage: {}", e.getMessage());
+            return "Invalid input: " + e.getMessage();
+        } catch (Exception e) {
+            log.error("Error processing message for conversationId={}: {}", conversationId, e.getMessage(), e);
+            return DEFAULT_RESPONSE;
         }
     }
 }

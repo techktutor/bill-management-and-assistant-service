@@ -20,8 +20,8 @@ public class RagConfig {
     public VectorStoreDocumentRetriever vectorStoreDocumentRetriever(VectorStore vectorStore) {
         return VectorStoreDocumentRetriever.builder()
                 .vectorStore(vectorStore)
-                .topK(6)
-                .similarityThreshold(0.0)
+                .topK(10)
+                .similarityThreshold(0.32)
                 .build();
     }
 
@@ -33,28 +33,37 @@ public class RagConfig {
      * - use a bill-focused answer template for the final response
      */
     @Bean
-    public RetrievalAugmentationAdvisor retrievalAugmentationAdvisor(VectorStoreDocumentRetriever vectorStoreDocumentRetriever) {
+    public RetrievalAugmentationAdvisor retrievalAugmentationAdvisor(VectorStoreDocumentRetriever retriever) {
         return RetrievalAugmentationAdvisor.builder()
-                .documentRetriever(vectorStoreDocumentRetriever)
+                .documentRetriever(retriever)
                 .queryAugmenter(ContextualQueryAugmenter.builder()
-                        .promptTemplate(PromptTemplate.builder()
-                                .template("""
-                                        You are an AI assistant helping a user manage and understand their bills.
-                                        
-                                        Use ONLY the context provided below to answer the question.
-                                        If the context is missing something, say so clearly.
-                                        
-                                        Question:
-                                        {query}
-                                        
-                                        Context:
-                                        {context}
-                                        
-                                        Answer (be concise, structured, and mention specific bill details when relevant):
-                                        """)
-                                .build())
-                        .allowEmptyContext(true)
+                        .promptTemplate(buildPromptTemplate())
+                        .allowEmptyContext(false)
                         .build())
                 .build();
+    }
+
+    private PromptTemplate buildPromptTemplate() {
+        String template = """
+                You are an AI Bill Management Assistant.
+                You must answer ONLY using the retrieved bill context below.
+                If the answer cannot be derived explicitly from the context, do NOT guess.
+                
+                Question:
+                {query}
+                
+                RRetrieved Bill Context (each chunk may include metadata like filename, chunk_index, ingested_at):
+                {context}
+                
+                Rules:
+                - Use information strictly from the retrieved context (amounts, due dates, usage, billing periods, vendor names, etc.).
+                - If multiple chunks belong to the same bill, combine their meaning.
+                - If the context is empty or does not contain enough information to answer, reply with:
+                  "I don’t have enough information from the retrieved bills."
+                - Never fabricate bill amounts, dates, or usage not present in the context.
+                - Never rely on prior knowledge for bill data—always prioritize context tokens.
+                - Keep answers concise, factual, and grounded strictly in the retrieved text.
+                """;
+        return new PromptTemplate(template);
     }
 }

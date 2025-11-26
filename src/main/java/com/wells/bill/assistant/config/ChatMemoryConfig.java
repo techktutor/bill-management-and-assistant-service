@@ -10,9 +10,9 @@ import org.springframework.context.annotation.Configuration;
 public class ChatMemoryConfig {
 
     @Bean(name = "chatMemory")
-    public ChatMemory chatMemory(JdbcChatMemoryRepository repository) {
+    public ChatMemory chatMemory(JdbcChatMemoryRepository chatMemoryRepository) {
         return MessageWindowChatMemory.builder()
-                .chatMemoryRepository(repository)
+                .chatMemoryRepository(chatMemoryRepository)
                 .maxMessages(20)
                 .build();
     }

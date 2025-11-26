@@ -1,41 +1,51 @@
 package com.wells.bill.assistant.controller;
 
-import com.wells.bill.assistant.entity.Bill;
+import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.service.BillService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/bills")
 @RequiredArgsConstructor
+@RequestMapping("/api/bills")
 public class BillController {
 
     private final BillService billService;
 
     @PostMapping
-    public Bill createBill(@RequestBody Bill bill) {
-        return billService.createBill(bill);
-    }
-
-    @GetMapping
-    public List<Bill> getAllBills() {
-        return billService.getAllBills();
+    public ResponseEntity<BillEntity> create(@RequestBody BillEntity bill) {
+        return ResponseEntity.ok(billService.createBill(bill));
     }
 
     @GetMapping("/{id}")
-    public Bill getBill(@PathVariable Long id) {
-        return billService.getBill(id);
+    public ResponseEntity<BillEntity> get(@PathVariable Long id) {
+        return ResponseEntity.ok(billService.getBill(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<BillEntity>> list() {
+        return ResponseEntity.ok(billService.listAllBills());
+    }
+
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<BillEntity>> listByStatus(@PathVariable String status) {
+        return ResponseEntity.ok(billService.listByStatus(status));
     }
 
     @PutMapping("/{id}")
-    public Bill updateBill(@PathVariable Long id, @RequestBody Bill bill) {
-        return billService.updateBill(id, bill);
+    public ResponseEntity<BillEntity> update(
+            @PathVariable Long id,
+            @RequestBody BillEntity bill
+    ) {
+        return ResponseEntity.ok(billService.updateBill(id, bill));
     }
 
     @DeleteMapping("/{id}")
-    public void deleteBill(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         billService.deleteBill(id);
+        return ResponseEntity.noContent().build();
     }
 }

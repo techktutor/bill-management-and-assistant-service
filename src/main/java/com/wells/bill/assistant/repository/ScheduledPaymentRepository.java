@@ -1,7 +1,7 @@
 package com.wells.bill.assistant.repository;
 
-import com.wells.bill.assistant.entity.PaymentScheduleStatus;
-import com.wells.bill.assistant.entity.ScheduledPayment;
+import com.wells.bill.assistant.model.PaymentScheduleStatus;
+import com.wells.bill.assistant.entity.ScheduledPaymentEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface ScheduledPaymentRepository extends JpaRepository<ScheduledPayment, UUID> {
-    List<ScheduledPayment> findByScheduledDateAndStatus(LocalDate date, PaymentScheduleStatus status);
+public interface ScheduledPaymentRepository extends JpaRepository<ScheduledPaymentEntity, UUID> {
+    List<ScheduledPaymentEntity> findByScheduledDateAndStatus(LocalDate date, PaymentScheduleStatus status);
+
+    List<ScheduledPaymentEntity> findAllByStatusAndScheduledDateLessThanEqual(PaymentScheduleStatus paymentScheduleStatus, LocalDate asOfDate);
 }

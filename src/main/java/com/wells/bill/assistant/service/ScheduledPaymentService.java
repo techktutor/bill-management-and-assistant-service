@@ -1,10 +1,11 @@
 package com.wells.bill.assistant.service;
 
-import com.wells.bill.assistant.entity.CreatePaymentRequest;
-import com.wells.bill.assistant.entity.CreatePaymentResponse;
-import com.wells.bill.assistant.entity.PaymentScheduleStatus;
-import com.wells.bill.assistant.entity.ScheduledPayment;
+import com.wells.bill.assistant.entity.ScheduledPaymentEntity;
+import com.wells.bill.assistant.model.CreatePaymentRequest;
+import com.wells.bill.assistant.model.PaymentScheduleStatus;
 import com.wells.bill.assistant.repository.ScheduledPaymentRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,41 +17,41 @@ import java.util.UUID;
 @Transactional
 public class ScheduledPaymentService {
 
-    private final ScheduledPaymentRepository scheduledPaymentRepository;
-    private final LocalPaymentService localPaymentService;
+    private static final Logger log = LoggerFactory.getLogger(ScheduledPaymentService.class);
 
-    public ScheduledPaymentService(ScheduledPaymentRepository scheduledPaymentRepository,
-                                   LocalPaymentService localPaymentService) {
+    private final ScheduledPaymentRepository scheduledPaymentRepository;
+
+    public ScheduledPaymentService(ScheduledPaymentRepository scheduledPaymentRepository) {
         this.scheduledPaymentRepository = scheduledPaymentRepository;
-        this.localPaymentService = localPaymentService;
     }
 
-    public ScheduledPayment schedule(String billId, CreatePaymentRequest req, LocalDate date) {
-        // authorize now (so funds are held) and schedule capture for date
-        CreatePaymentResponse auth = localPaymentService.authorizePayment(req, UUID.randomUUID().toString());
-
-        ScheduledPayment sp = new ScheduledPayment();
+    public ScheduledPaymentEntity schedule(String billId, CreatePaymentRequest req, LocalDate date) {
+        ScheduledPaymentEntity sp = new ScheduledPaymentEntity();
         sp.setId(UUID.randomUUID());
         sp.setBillId(billId);
-        sp.setPaymentId(auth.getPaymentId());
+        sp.setPaymentId(null); // assigned only when executed
         sp.setAmount(req.getAmount());
         sp.setCurrency(req.getCurrency());
         sp.setScheduledDate(date);
         sp.setStatus(PaymentScheduleStatus.SCHEDULED);
         sp.setCreatedAt(Instant.now());
-        scheduledPaymentRepository.save(sp);
+        sp.setUpdatedAt(Instant.now());
+
+        UUID id = scheduledPaymentRepository.save(sp).getId();
+        log.info("Scheduled payment created: {}", id);
         return sp;
     }
 
     public boolean cancel(UUID scheduledPaymentId) {
-        var spOpt = scheduledPaymentRepository.findById(scheduledPaymentId);
-        if (spOpt.isEmpty()) return false;
-        var sp = spOpt.get();
-        if (sp.getStatus() != PaymentScheduleStatus.SCHEDULED) return false;
-        sp.setStatus(PaymentScheduleStatus.CANCELED);
-        sp.setUpdatedAt(Instant.now());
-        scheduledPaymentRepository.save(sp);
-        // Note: this does not currently void an authorization with the acquirer. Implement void if supported.
-        return true;
+        return scheduledPaymentRepository.findById(scheduledPaymentId)
+                .filter(sp -> sp.getStatus() == PaymentScheduleStatus.SCHEDULED)
+                .map(sp -> {
+                    sp.setStatus(PaymentScheduleStatus.CANCELED);
+                    sp.setUpdatedAt(Instant.now());
+                    scheduledPaymentRepository.save(sp);
+                    log.info("Scheduled payment canceled: {}", scheduledPaymentId);
+                    return true;
+                })
+                .orElse(false);
     }
 }

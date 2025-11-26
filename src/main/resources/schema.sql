@@ -106,3 +106,16 @@ CREATE TABLE outbox_events (
 CREATE INDEX idx_payments_merchant ON payments(merchant_id);
 CREATE UNIQUE INDEX uidx_payments_payment_intent_id ON payments(payment_intent_id);
 CREATE INDEX idx_scheduled_payments_date_status ON scheduled_payments(scheduled_date, status);
+
+ALTER TABLE outbox_events
+    ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMP NULL;
+
+CREATE INDEX IF NOT EXISTS idx_outbox_processed_next_attempt
+    ON outbox_events (processed, next_attempt_at, created_at);
+ALTER TABLE idempotency_key
+    ADD COLUMN IF NOT EXISTS request_hash VARCHAR(128);
+
+-- Useful index for outbox dispatcher (if not already present)
+CREATE INDEX IF NOT EXISTS idx_outbox_processed_next_attempt
+    ON outbox_events (processed, next_attempt_at, created_at);

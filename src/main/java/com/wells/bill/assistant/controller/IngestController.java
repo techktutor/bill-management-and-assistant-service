@@ -1,6 +1,6 @@
 package com.wells.bill.assistant.controller;
 
-import com.wells.bill.assistant.service.RagEtlService;
+import com.wells.bill.assistant.service.ETLPipelineService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,19 +10,25 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
-@RequestMapping("/api/ingest")
 @RequiredArgsConstructor
+@RequestMapping("/api/ingest")
 public class IngestController {
 
-    private final RagEtlService etlService;
+    private final ETLPipelineService etlService;
 
-    @PostMapping("/file")
-    public ResponseEntity<String> ingest(@RequestParam("file") MultipartFile file, @RequestParam(value = "source", required = false) String source) {
+    @PostMapping(value = "/file", consumes = "multipart/form-data")
+    public ResponseEntity<?> ingest(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body("File cannot be empty.");
+        }
         try {
-            etlService.ingestFile(file, source == null ? file.getOriginalFilename() : source);
-            return ResponseEntity.ok("ok");
+            int chunks = etlService.ingestFile(file);
+            return ResponseEntity.ok("File ingested successfully. Chunks created: " + chunks);
+        } catch (IllegalArgumentException bad) {
+            return ResponseEntity.badRequest().body(bad.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("error: " + e.getMessage());
+            return ResponseEntity.internalServerError().body("Ingestion failed. Please try again.");
         }
     }
 }
+

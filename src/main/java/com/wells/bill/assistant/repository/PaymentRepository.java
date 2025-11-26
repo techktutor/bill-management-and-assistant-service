@@ -1,13 +1,16 @@
 package com.wells.bill.assistant.repository;
 
-import com.wells.bill.assistant.entity.Payment;
+import com.wells.bill.assistant.entity.PaymentEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface PaymentRepository extends JpaRepository<Payment, UUID> {
-    Optional<Payment> findByPaymentIntentId(String paymentIntentId);
+public interface PaymentRepository extends JpaRepository<PaymentEntity, UUID> {
+    Optional<PaymentEntity> findByPaymentId(String paymentIntentId);
+
+    List<PaymentEntity> findByCustomerId(UUID customerId);
 }
