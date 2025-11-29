@@ -30,10 +30,9 @@ public class RagEngineService {
 
     // Defaults can be tuned
     private static final int DEFAULT_TOP_K = 12;
-    private static final int HYBRID_FETCH_MULTIPLIER = 4; // fetch more candidates for re-ranking
+    // fetch more candidates for re-ranking
+    private static final int HYBRID_FETCH_MULTIPLIER = 4;
     private static final int DEFAULT_STITCH_MAX_CHARS = 8000;
-
-    // ----------------------- Retrieval helpers -----------------------
 
     /**
      * Retrieve chunks for a specific bill using metadata filtering. Safe input handling.
@@ -77,8 +76,6 @@ public class RagEngineService {
         }
     }
 
-    // ----------------------- Hybrid retrieval -----------------------
-
     /**
      * Hybrid retrieval: run a vector search restricted by metadata filters (if provided)
      * then re-rank the results by a simple lexical overlap score and return top-K.
@@ -91,17 +88,17 @@ public class RagEngineService {
         if (query == null) query = "";
         int fetch = Math.max(topK * HYBRID_FETCH_MULTIPLIER, Math.max(topK, DEFAULT_TOP_K));
 
-        SearchRequest.Builder b = SearchRequest.builder()
+        SearchRequest.Builder builder = SearchRequest.builder()
                 .query(query)
                 .topK(fetch);
 
         if (metadataFilter != null && !metadataFilter.isEmpty()) {
-            b.filterExpression(metadataFilter.toString());
+            builder.filterExpression(metadataFilter.toString());
         }
 
-        SearchRequest req = b.build();
+        SearchRequest req = builder.build();
         List<Document> candidates = safeSimilaritySearch(req);
-        if (candidates.isEmpty()) return List.of();
+        if (candidates.isEmpty()){ return List.of();}
 
         List<String> queryTokens = tokenize(query);
 
@@ -172,8 +169,6 @@ public class RagEngineService {
         return Integer.MAX_VALUE;
     }
 
-    // ----------------------- RAG: prompt + LLM call -----------------------
-
     /**
      * Answer a question about a single bill using RAG:
      * - hybrid retrieve
@@ -224,8 +219,6 @@ public class RagEngineService {
                 "- If multiple chunks belong to the same bill, combine their meaning.\n" +
                 "- Answer concisely and only using the context.\n";
     }
-
-    // ----------------------- Utilities -----------------------
 
     private List<String> tokenize(String text) {
         if (text == null) return List.of();

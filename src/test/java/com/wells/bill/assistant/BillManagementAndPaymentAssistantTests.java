@@ -11,5 +11,4 @@ class BillManagementAndPaymentAssistantTests {
 	@Test
 	void contextLoads() {
 	}
-
 }

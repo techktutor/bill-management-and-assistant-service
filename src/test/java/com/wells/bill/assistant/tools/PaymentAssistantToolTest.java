@@ -52,18 +52,19 @@ class PaymentAssistantToolTest {
     @Test
     void payBill_success_callsMakePaymentService() {
         when(paymentService.createPaymentRecord(any(CreatePaymentRequest.class))).thenReturn("pay_12345");
+        doNothing().when(billService).markAsPaid(anyLong());
 
         String merchant = UUID.randomUUID().toString();
         String customer = UUID.randomUUID().toString();
 
-        String res = adapter.payBill("bill-1", 20.0, "tok_card_123", merchant, customer, true);
+        String res = adapter.payBill("123456777", 20.0, "tok_card_123", merchant, customer, true);
 
         assertThat(res).contains("Payment successful");
         ArgumentCaptor<CreatePaymentRequest> captor = ArgumentCaptor.forClass(CreatePaymentRequest.class);
         verify(paymentService, times(1)).createPaymentRecord(captor.capture());
         CreatePaymentRequest captured = captor.getValue();
         assertThat(captured.getAmount()).isEqualTo(2000L);
-        assertThat(captured.getCurrency()).isEqualTo("usd");
+        assertThat(captured.getCurrency()).isEqualTo("USD");
     }
 
     @Test

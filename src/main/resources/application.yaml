@@ -15,7 +15,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
   # ====================================================================
   # 2. SPRING AI CONFIGURATION
   # ====================================================================
@@ -42,7 +42,7 @@ spring:
               temperature: 0.5
     vectorstore:
       pgvector:
-        initialize-schema: true
+        initialize-schema: false
         remove-existing-vector-store-table: true
         index-type: HNSW
         dimensions: 768
