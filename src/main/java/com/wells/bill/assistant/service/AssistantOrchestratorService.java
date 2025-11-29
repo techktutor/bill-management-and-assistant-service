@@ -1,7 +1,6 @@
 package com.wells.bill.assistant.service;
 
-import com.wells.bill.assistant.tools.BillToolAdaptor;
-import com.wells.bill.assistant.tools.PaymentToolAdapter;
+import com.wells.bill.assistant.tools.*;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,8 +9,6 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.stereotype.Service;
-
-import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
@@ -39,8 +36,8 @@ public class AssistantOrchestratorService {
 
     private final ChatMemory chatMemory;
     private final ChatClient chatClient;
-    private final BillToolAdaptor billToolAdaptor;
-    private final PaymentToolAdapter paymentToolAdapter;
+    private final BillAssistantTool billAssistantTool;
+    private final PaymentAssistantTool paymentAssistantTool;
     private final RetrievalAugmentationAdvisor ragAdvisor;
 
     public String processMessage(String conversationId, String userMessage) {
@@ -58,7 +55,7 @@ public class AssistantOrchestratorService {
                     .user(userMessage)
                     .advisors(memoryAdvisor)  // Memory advisor manages conversation history
                     .advisors(ragAdvisor)  // RAG advisor retrieves and augments context
-                    .tools(paymentToolAdapter, billToolAdaptor)  // Register available tools
+                    .tools(paymentAssistantTool, billAssistantTool)
                     .call()
                     .content();
 
@@ -66,7 +63,6 @@ public class AssistantOrchestratorService {
                 log.warn("Empty response from LLM for conversationId={}", conversationId);
                 return DEFAULT_RESPONSE;
             }
-
             log.info("Message processed successfully for conversationId={}", conversationId);
             return response;
         } catch (IllegalArgumentException e) {

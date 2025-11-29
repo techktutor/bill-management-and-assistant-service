@@ -1,7 +1,7 @@
 package com.wells.bill.assistant.controller;
 
 import com.wells.bill.assistant.entity.BillEntity;
-import com.wells.bill.assistant.service.BillService;
+import com.wells.bill.assistant.service.BillManagementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,7 +13,7 @@ import java.util.List;
 @RequestMapping("/api/bills")
 public class BillController {
 
-    private final BillService billService;
+    private final BillManagementService billService;
 
     @PostMapping
     public ResponseEntity<BillEntity> create(@RequestBody BillEntity bill) {

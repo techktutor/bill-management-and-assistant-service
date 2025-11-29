@@ -91,3 +91,24 @@ User uploads file -> IngestController -> ETLPipelineService
 
 Scheduled execution path:
 ScheduledJob PaymentExecutionService (cron) -> finds due scheduled payments -> executes via MakePaymentService -> updates ScheduledPaymentEntity
+
+## RAG Integration Plan
+com.wells.bill.assistant
+├── controller
+│    ├── ChatController
+│    └── RagQueryController (optional - dev only)
+├── service
+│    ├── AssistantOrchestratorService   <-- integrates RAG
+│    ├── BillService
+│    ├── MakePaymentService
+│    ├── PaymentExecutionService
+│    └── ScheduledPaymentService
+├── rag                                  <-- your RAG engine layer
+│    ├── VectorRetrievalService
+│    ├── RagQueryService   <-- place it here
+│    ├── ChunkRankerService (future)
+│    ├── BillContextStitcher (future)
+├── tools
+│    ├── BillRagTools           <-- use hybrid retrieval here
+│    ├── OverdueExplainerTool   <-- uses retrieval + stitching
+│    └── BillRagQueryTool (optional)

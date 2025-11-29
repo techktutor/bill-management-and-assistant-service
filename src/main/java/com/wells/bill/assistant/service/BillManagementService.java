@@ -14,7 +14,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class BillService {
+public class BillManagementService {
 
     private final BillRepository billRepository;
 
@@ -65,7 +65,7 @@ public class BillService {
         log.info("Bill marked as PAID: {}", billId);
     }
 
-    public void updateOverdues() {
+    public void updateOverdue() {
         List<BillEntity> bills = billRepository.findAll();
         LocalDate today = LocalDate.now();
         bills.stream()
@@ -87,5 +87,23 @@ public class BillService {
                 end,
                 List.of("PENDING", "OVERDUE")
         );
+    }
+
+    public List<BillEntity> findUnpaidByDueDateRange(LocalDate start, LocalDate end) {
+        return billRepository.findAll().stream()
+                .filter(b -> b.getDueDate() != null &&
+                        (b.getStatus().equalsIgnoreCase("PENDING")
+                                || b.getStatus().equalsIgnoreCase("OVERDUE")) &&
+                        !b.getDueDate().isBefore(start) &&
+                        !b.getDueDate().isAfter(end))
+                .toList();
+    }
+
+    public List<BillEntity> findAllUnpaid() {
+        return billRepository.findAll().stream()
+                .filter(b -> b.getStatus() != null &&
+                        (b.getStatus().equalsIgnoreCase("PENDING")
+                                || b.getStatus().equalsIgnoreCase("OVERDUE")))
+                .toList();
     }
 }

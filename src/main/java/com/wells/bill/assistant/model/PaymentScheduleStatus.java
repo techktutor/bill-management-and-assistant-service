@@ -4,5 +4,7 @@ public enum PaymentScheduleStatus {
     SCHEDULED,
     CANCELED,
     EXECUTED,
-    PROCESSING, COMPLETED, FAILED
+    PROCESSING,
+    COMPLETED,
+    FAILED
 }

@@ -1,8 +1,11 @@
-package com.wells.bill.assistant.service;
+package com.wells.bill.assistant.executor;
 
 import com.wells.bill.assistant.entity.ScheduledPaymentEntity;
+import com.wells.bill.assistant.model.CreatePaymentRequest;
 import com.wells.bill.assistant.model.PaymentScheduleStatus;
 import com.wells.bill.assistant.repository.ScheduledPaymentRepository;
+import com.wells.bill.assistant.service.BillManagementService;
+import com.wells.bill.assistant.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,11 +21,12 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class PaymentExecutionService {
+
     private static final Logger log = LoggerFactory.getLogger(PaymentExecutionService.class);
 
     private final ScheduledPaymentRepository scheduledPaymentRepository;
-    private final MakePaymentService makePaymentService;
-    private final BillService billService;
+    private final PaymentService paymentService;
+    private final BillManagementService billService;
 
     /**
      * Finds due scheduled payments and attempts to execute them in a transactional manner.
@@ -40,14 +44,14 @@ public class PaymentExecutionService {
                 scheduledPaymentRepository.save(sp);
 
                 // Build CreatePaymentRequest and call makePaymentService
-                var req = new com.wells.bill.assistant.model.CreatePaymentRequest();
+                var req = new CreatePaymentRequest();
                 req.setAmount(sp.getAmount());
                 req.setCurrency(sp.getCurrency());
                 // merchant/customer must be present in metadata or passed separately; using placeholders here
                 req.setMerchantId(sp.getMerchantId());
                 req.setCustomerId(sp.getCustomerId());
 
-                String paymentId = makePaymentService.createPaymentRecord(req);
+                String paymentId = paymentService.createPaymentRecord(req);
 
                 // on success update scheduled payment
                 sp.setPaymentId(UUID.fromString(paymentId.startsWith("pay_") ? paymentId.split("pay_")[1] : paymentId));

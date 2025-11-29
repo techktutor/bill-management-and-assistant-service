@@ -3,7 +3,7 @@ package com.wells.bill.assistant.integ;
 import com.wells.bill.assistant.entity.ScheduledPaymentEntity;
 import com.wells.bill.assistant.model.PaymentScheduleStatus;
 import com.wells.bill.assistant.repository.ScheduledPaymentRepository;
-import com.wells.bill.assistant.service.PaymentExecutionService;
+import com.wells.bill.assistant.executor.PaymentExecutionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

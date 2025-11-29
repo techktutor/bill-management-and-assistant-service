@@ -11,7 +11,5 @@ import java.util.UUID;
 
 @Repository
 public interface ScheduledPaymentRepository extends JpaRepository<ScheduledPaymentEntity, UUID> {
-    List<ScheduledPaymentEntity> findByScheduledDateAndStatus(LocalDate date, PaymentScheduleStatus status);
-
     List<ScheduledPaymentEntity> findAllByStatusAndScheduledDateLessThanEqual(PaymentScheduleStatus paymentScheduleStatus, LocalDate asOfDate);
 }

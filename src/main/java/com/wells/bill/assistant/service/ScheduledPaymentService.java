@@ -29,7 +29,8 @@ public class ScheduledPaymentService {
         ScheduledPaymentEntity sp = new ScheduledPaymentEntity();
         sp.setId(UUID.randomUUID());
         sp.setBillId(billId);
-        sp.setPaymentId(null); // assigned only when executed
+        // assigned only when executed
+        sp.setPaymentId(null);
         sp.setAmount(req.getAmount());
         sp.setCurrency(req.getCurrency());
         sp.setScheduledDate(date);

@@ -17,16 +17,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class MakePaymentServiceTest {
+class PaymentServiceTest {
 
     @Mock
     private PaymentRepository paymentRepository;
 
-    private MakePaymentService service;
+    private PaymentService service;
 
     @BeforeEach
     void setUp() {
-        service = new MakePaymentService(paymentRepository);
+        service = new PaymentService(paymentRepository);
     }
 
     @Test

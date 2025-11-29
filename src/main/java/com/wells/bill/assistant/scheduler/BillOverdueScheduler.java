@@ -1,5 +1,6 @@
-package com.wells.bill.assistant.service;
+package com.wells.bill.assistant.scheduler;
 
+import com.wells.bill.assistant.service.BillManagementService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,12 +14,13 @@ import java.time.LocalDate;
 public class BillOverdueScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(BillOverdueScheduler.class);
-    private final BillService billService;
+
+    private final BillManagementService billService;
 
     // Run daily at 01:00 AM
     @Scheduled(cron = "0 0 1 * * *")
     public void markOverdue() {
         log.info("Running BillOverdueScheduler at {}", LocalDate.now());
-        billService.updateOverdues();
+        billService.updateOverdue();
     }
 }
