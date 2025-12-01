@@ -1,15 +1,28 @@
 package com.wells.bill.assistant.repository;
 
 import com.wells.bill.assistant.entity.PaymentEntity;
+import com.wells.bill.assistant.entity.PaymentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<PaymentEntity, UUID> {
-    Optional<PaymentEntity> findByPaymentId(String paymentIntentId);
+
+    Optional<PaymentEntity> findByIdempotencyKey(String idempotencyKey);
+
+    // FIXED: paymentId is a String
+    Optional<PaymentEntity> findByPaymentId(String paymentId);
+
+    // FIXED: customerId is UUID in entity
     List<PaymentEntity> findByCustomerId(UUID customerId);
+
+    List<PaymentEntity> findByStatusAndScheduledDateLessThanEqual(
+            PaymentStatus paymentStatus,
+            LocalDate asOfDate
+    );
 }

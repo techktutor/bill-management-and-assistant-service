@@ -1,10 +1,9 @@
 package com.wells.bill.assistant.tools;
 
-import com.wells.bill.assistant.entity.ScheduledPaymentEntity;
-import com.wells.bill.assistant.model.CreatePaymentRequest;
-import com.wells.bill.assistant.service.BillManagementService;
+import com.wells.bill.assistant.entity.PaymentEntity;
+import com.wells.bill.assistant.model.CreatePaymentIntentRequest;
+import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.PaymentService;
-import com.wells.bill.assistant.service.ScheduledPaymentService;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,6 +11,7 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -24,9 +24,8 @@ public class PaymentAssistantTool {
     private static final String DEFAULT_CURRENCY = "USD";
     private static final double MAX_AMOUNT = 1000000.0;
 
-    private final BillManagementService billService;
+    private final BillService billService;
     private final PaymentService paymentService;
-    private final ScheduledPaymentService scheduledPaymentService;
 
     @Tool(name = "payBill", description = "Make an immediate payment. Requires explicit confirmation. Parameters: billId, amount, cardToken, merchantId, customerId, confirm=true")
     public String payBill(@ToolParam(description = "Bill identifier") String billId, @ToolParam(description = "Amount in USD (e.g., 150.50)") Double amount, @ToolParam(description = "Tokenized card reference") String cardToken, @ToolParam(description = "Merchant UUID") String merchantId, @ToolParam(description = "Customer UUID") String customerId, @ToolParam(description = "User confirmation: must be true to execute payment") Boolean confirm) {
@@ -48,13 +47,11 @@ public class PaymentAssistantTool {
                 return "Payment failed: Invalid card token format.";
             }
 
-            long cents = toCents(amount);
+            CreatePaymentIntentRequest req = buildPaymentRequest(amount, merchantId, customerId);
 
-            CreatePaymentRequest req = buildPaymentRequest(amount, merchantId, customerId);
-
-            String paymentId = paymentService.createPaymentRecord(req);
+            String paymentId = paymentService.createPaymentIntent(req).getPaymentId();
             log.info("Instant payment created: paymentId={}, billId={}, amount=${}", paymentId, billId, amount);
-            billService.markAsPaid(Long.valueOf(billId));
+            billService.markAsPaid(Long.valueOf(billId), paymentId, true);
             return String.format("Payment successful. Payment ID: %s | Amount: $%.2f", paymentId, amount);
         } catch (IllegalArgumentException e) {
             log.error("Invalid UUID format in payment request: {}", e.getMessage());
@@ -97,8 +94,8 @@ public class PaymentAssistantTool {
                 return "Scheduling failed: Invalid date format (yyyy-MM-dd).";
             }
 
-            CreatePaymentRequest req = buildPaymentRequest(amount, merchantId, customerId);
-            ScheduledPaymentEntity sp = scheduledPaymentService.schedule(billId, req, scheduledDate);
+            CreatePaymentIntentRequest req = buildPaymentRequest(amount, merchantId, customerId);
+            PaymentEntity sp = paymentService.schedulePayment(Long.valueOf(billId), req, scheduledDate);
 
             log.info("Scheduled payment created: id={}, billId={}, date={}, amount=${}", sp.getId(), billId, date, amount);
             return String.format("Payment scheduled. Scheduled Payment ID: %s | Date: %s | Amount: $%.2f", sp.getId(), date, amount);
@@ -121,7 +118,7 @@ public class PaymentAssistantTool {
             }
 
             UUID id = UUID.fromString(scheduledPaymentId);
-            boolean cancelled = scheduledPaymentService.cancel(id);
+            boolean cancelled = paymentService.cancelScheduledPayment(id);
 
             if (cancelled) {
                 log.info("Scheduled payment cancelled: {}", id);
@@ -154,11 +151,11 @@ public class PaymentAssistantTool {
         return (long) (amount * 100);
     }
 
-    private CreatePaymentRequest buildPaymentRequest(Double amount, String merchantId, String customerId) {
-        CreatePaymentRequest req = new CreatePaymentRequest();
+    private CreatePaymentIntentRequest buildPaymentRequest(Double amount, String merchantId, String customerId) {
+        CreatePaymentIntentRequest req = new CreatePaymentIntentRequest();
         req.setMerchantId(UUID.fromString(merchantId));
         req.setCustomerId(UUID.fromString(customerId));
-        req.setAmount(toCents(amount));
+        req.setAmount(new BigDecimal(amount));
         req.setCurrency(DEFAULT_CURRENCY);
         return req;
     }

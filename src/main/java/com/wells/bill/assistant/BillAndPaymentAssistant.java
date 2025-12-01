@@ -6,9 +6,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @EnableScheduling
 @SpringBootApplication
-public class BillManagementAndPaymentAssistant {
+public class BillAndPaymentAssistant {
 
 	public static void main(String[] args) {
-		SpringApplication.run(BillManagementAndPaymentAssistant.class, args);
+		SpringApplication.run(BillAndPaymentAssistant.class, args);
 	}
 }

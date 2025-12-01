@@ -1,6 +1,6 @@
 package com.wells.bill.assistant.scheduler;
 
-import com.wells.bill.assistant.service.BillManagementService;
+import com.wells.bill.assistant.service.BillService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +15,7 @@ public class BillOverdueScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(BillOverdueScheduler.class);
 
-    private final BillManagementService billService;
+    private final BillService billService;
 
     // Run daily at 01:00 AM
     @Scheduled(cron = "0 0 1 * * *")

@@ -16,19 +16,16 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class ETLPipelineService {
+public class IngestionService {
 
-    private static final Logger log = LoggerFactory.getLogger(ETLPipelineService.class);
+    private static final Logger log = LoggerFactory.getLogger(IngestionService.class);
 
     private final VectorStore vectorStore;
 
-    // Recommended: 256–512 tokens, 30–40 token overlap
     private final TokenTextSplitter splitter = new TokenTextSplitter();
 
     public int ingestFile(MultipartFile file) {
-
         try (InputStream is = file.getInputStream()) {
-
             if (file.getSize() > (20 * 1024 * 1024)) {
                 throw new IllegalArgumentException("File too large. Max allowed: 20MB");
             }

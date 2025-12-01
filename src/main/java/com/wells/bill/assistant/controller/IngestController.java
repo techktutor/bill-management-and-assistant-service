@@ -3,7 +3,7 @@
 // ============================
 package com.wells.bill.assistant.controller;
 
-import com.wells.bill.assistant.service.ETLPipelineService;
+import com.wells.bill.assistant.service.IngestionService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +24,7 @@ public class IngestController {
 
     private static final Logger log = LoggerFactory.getLogger(IngestController.class);
 
-    private final ETLPipelineService etlService;
+    private final IngestionService etlService;
 
     @PostMapping(value = "/file", consumes = "multipart/form-data")
     public ResponseEntity<?> ingest(@RequestParam("file") MultipartFile file) {

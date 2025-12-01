@@ -25,7 +25,7 @@ public class RagQueryController {
     private final RagEngineService ragEngineService;
 
     @GetMapping("/answerBillQuery")
-    public ResponseEntity<?> answer(@RequestParam String billId, @RequestParam String q) {
+    public ResponseEntity<?> answer(@RequestParam String billId, @RequestParam String question) {
 
         log.info("RAG query request: billId={}", billId);
 
@@ -34,17 +34,17 @@ public class RagQueryController {
                     "error", "billId is required"
             ));
         }
-        if (q == null || q.isBlank()) {
+        if (question == null || question.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "question is required"
             ));
         }
 
-        String response = ragEngineService.answerQuestionForBill(billId, q);
+        String response = ragEngineService.answerQuestionForBill(billId, question);
 
         return ResponseEntity.ok(Map.of(
                 "billId", billId,
-                "question", q,
+                "question", question,
                 "answer", response
         ));
     }
