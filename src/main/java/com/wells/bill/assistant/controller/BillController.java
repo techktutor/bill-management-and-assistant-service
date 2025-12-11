@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -34,7 +35,7 @@ public class BillController {
     // Get Bill by ID
     // -----------------------------
     @GetMapping("/{billId}")
-    public ResponseEntity<BillCreateResponse> getBill(@PathVariable Long billId) {
+    public ResponseEntity<BillCreateResponse> getBill(@PathVariable UUID billId) {
         return ResponseEntity.ok(billService.getBill(billId));
     }
 
@@ -59,8 +60,7 @@ public class BillController {
     // Update Bill
     // -----------------------------
     @PutMapping("/{billId}")
-    public ResponseEntity<BillCreateResponse> updateBill(@PathVariable Long billId,
-                                                         @RequestBody BillUpdateRequest req) {
+    public ResponseEntity<BillCreateResponse> updateBill(@PathVariable UUID billId, @RequestBody BillUpdateRequest req) {
         return ResponseEntity.ok(billService.updateBill(billId, req));
     }
 
@@ -68,7 +68,7 @@ public class BillController {
     // Delete Bill
     // -----------------------------
     @DeleteMapping("/{billId}")
-    public ResponseEntity<Void> deleteBill(@PathVariable Long billId) {
+    public ResponseEntity<Void> deleteBill(@PathVariable UUID billId) {
         billService.deleteBill(billId);
         return ResponseEntity.noContent().build();
     }
@@ -99,9 +99,9 @@ public class BillController {
         return ResponseEntity.ok("Overdue bills updated");
     }
 
-    @PostMapping("/{billId}/markPaid")
+    @PostMapping("/{billId}/markPaid/{paymentId}")
     public ResponseEntity<String> markPaid(
-            @PathVariable Long billId,
+            @PathVariable UUID billId,
             @RequestParam(required = false) String paymentId
     ) {
         billService.markAsPaid(billId, paymentId, false);

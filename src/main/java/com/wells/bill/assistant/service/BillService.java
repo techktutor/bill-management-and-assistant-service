@@ -9,13 +9,18 @@ import com.wells.bill.assistant.model.BillUpdateRequest;
 import com.wells.bill.assistant.repository.BillRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -24,6 +29,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class BillService {
 
+    private final VectorStore vectorStore;
     private final BillRepository billRepository;
 
     /**
@@ -39,6 +45,10 @@ public class BillService {
 
         BillEntity saved = billRepository.save(billEntity);
         log.info("Bill created: id={} name={} due={}", saved.getId(), saved.getName(), saved.getDueDate());
+        // ---- STORE TO VECTOR STORE ----
+        Document doc = toVectorDocument(saved);
+        vectorStore.add(List.of(doc));
+        log.info("Stored bill {} into vector DB", saved.getId());
         return toResponse(saved);
     }
 
@@ -61,12 +71,12 @@ public class BillService {
         return billEntity;
     }
 
-    public BillCreateResponse getBill(Long id) {
+    public BillCreateResponse getBill(UUID id) {
         BillEntity billEntity = getBillEntity(id);
         return toResponse(billEntity);
     }
 
-    private BillEntity getBillEntity(Long id) {
+    private BillEntity getBillEntity(UUID id) {
         return billRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Bill not found: " + id));
     }
@@ -90,7 +100,7 @@ public class BillService {
     }
 
     @Transactional
-    public BillCreateResponse updateBill(Long id, BillUpdateRequest updates) {
+    public BillCreateResponse updateBill(UUID id, BillUpdateRequest updates) {
         BillEntity billEntity = getBillEntity(id);
         if (updates.getName() != null) billEntity.setName(updates.getName());
         if (updates.getVendor() != null) billEntity.setVendor(updates.getVendor());
@@ -103,12 +113,16 @@ public class BillService {
         if (updates.getSource() != null) billEntity.setSource(updates.getSource());
         BillEntity saved = billRepository.save(billEntity);
         log.info("Bill updated: id={}", saved.getId());
+        // ---- UPDATE VECTOR STORE ----
+        Document doc = toVectorDocument(saved);
+        vectorStore.add(List.of(doc)); // overwrites existing by ID
+        log.info("Updated bill {} in vector DB", saved.getId());
         BillCreateResponse response = new BillCreateResponse();
         BeanUtils.copyProperties(saved, response);
         return response;
     }
 
-    public void deleteBill(Long id) {
+    public void deleteBill(UUID id) {
         billRepository.deleteById(id);
         log.info("Bill deleted: {}", id);
     }
@@ -117,7 +131,7 @@ public class BillService {
      * Mark a bill as paid and optionally attach the paymentId reference.
      */
     @Transactional
-    public void markAsPaid(Long billId, String paymentId, boolean systemAction) {
+    public void markAsPaid(UUID billId, String paymentId, boolean systemAction) {
         BillEntity bill = getBillEntity(billId);
 
         if (bill.getStatus() == BillStatus.PAID) {
@@ -191,4 +205,24 @@ public class BillService {
         BeanUtils.copyProperties(bill, response);
         return response;
     }
+
+    private Document toVectorDocument(BillEntity bill) {
+        String text = bill.getExtractedText();
+        if (text == null || text.isBlank()) {
+            text = bill.getName() + " " + bill.getVendor() + " " + bill.getAmount();
+        }
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("bill_id", bill.getId());
+        metadata.put("vendor", bill.getVendor());
+        metadata.put("amount", bill.getAmount());
+        metadata.put("parent_document_id", bill.getId().toString());
+
+        return Document.builder()
+                .id(String.valueOf(bill.getId()))
+                .text(text)
+                .metadata(metadata)
+                .build();
+    }
+
 }

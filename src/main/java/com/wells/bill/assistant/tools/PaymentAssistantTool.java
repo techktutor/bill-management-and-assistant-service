@@ -51,7 +51,7 @@ public class PaymentAssistantTool {
 
             String paymentId = paymentService.createPaymentIntent(req).getPaymentId();
             log.info("Instant payment created: paymentId={}, billId={}, amount=${}", paymentId, billId, amount);
-            billService.markAsPaid(Long.valueOf(billId), paymentId, true);
+            billService.markAsPaid(UUID.fromString(billId), paymentId, true);
             return String.format("Payment successful. Payment ID: %s | Amount: $%.2f", paymentId, amount);
         } catch (IllegalArgumentException e) {
             log.error("Invalid UUID format in payment request: {}", e.getMessage());
@@ -95,7 +95,7 @@ public class PaymentAssistantTool {
             }
 
             PaymentIntentRequest req = buildPaymentRequest(amount, merchantId, customerId);
-            PaymentIntentResponse sp = paymentService.schedulePayment(Long.valueOf(billId), req, scheduledDate);
+            PaymentIntentResponse sp = paymentService.schedulePayment(UUID.fromString(billId), req, scheduledDate);
 
             log.info("Scheduled payment created: id={}, billId={}, date={}, amount=${}", sp.getPaymentId(), billId, date, amount);
             return String.format("Payment scheduled. Scheduled Payment ID: %s | Date: %s | Amount: $%.2f", sp.getPaymentId(), date, amount);

@@ -61,9 +61,9 @@ public class RagEngineService {
     // ----------------------------------------------------------------------------
     // Retrieve by Bill ID
     // ----------------------------------------------------------------------------
-    public List<Document> retrieveByBillId(String billId, int topK) {
+    public void retrieveByBillId(String billId, int topK) {
         log.info("retrieveByBillId: {}", billId);
-        if (billId == null || billId.isBlank()) return List.of();
+        if (billId == null || billId.isBlank()) return;
 
         String filter = FilterExpressionBuilder.start()
                 .eq("parent_document_id", billId)
@@ -74,15 +74,15 @@ public class RagEngineService {
                 .topK(Math.max(1, topK));
 
         req = applyFilterSafely(req, filter);
-        return safeSimilaritySearch(req.build());
+        safeSimilaritySearch(req.build());
     }
 
     // ----------------------------------------------------------------------------
     // Retrieve by Vendor
     // ----------------------------------------------------------------------------
-    public List<Document> retrieveByVendor(String vendor, int topK) {
+    public void retrieveByVendor(String vendor, int topK) {
         log.info("retrieveByVendor: {}", vendor);
-        if (vendor == null || vendor.isBlank()) return List.of();
+        if (vendor == null || vendor.isBlank()) return;
 
         String filter = FilterExpressionBuilder.start()
                 .eq("vendor", vendor)
@@ -93,15 +93,15 @@ public class RagEngineService {
                 .topK(Math.max(1, topK));
 
         builder = applyFilterSafely(builder, filter);
-        return safeSimilaritySearch(builder.build());
+        safeSimilaritySearch(builder.build());
     }
 
     // ----------------------------------------------------------------------------
     // Metadata Filtering
     // ----------------------------------------------------------------------------
-    public List<Document> retrieveByMetadata(Map<String, Object> metadataFilter, int topK) {
+    public void retrieveByMetadata(Map<String, Object> metadataFilter, int topK) {
         log.info("retrieveByMetadata: keys={}", metadataFilter == null ? 0 : metadataFilter.size());
-        if (metadataFilter == null || metadataFilter.isEmpty()) return List.of();
+        if (metadataFilter == null || metadataFilter.isEmpty()) return;
 
         String filterExpression;
 
@@ -126,7 +126,7 @@ public class RagEngineService {
                 .topK(Math.max(1, topK));
 
         req = applyFilterSafely(req, filterExpression);
-        return safeSimilaritySearch(req.build());
+        safeSimilaritySearch(req.build());
     }
 
     // ----------------------------------------------------------------------------

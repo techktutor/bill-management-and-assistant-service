@@ -26,7 +26,7 @@ public class PaymentResponse {
 
     private UUID customerId;
 
-    private Long billId;
+    private UUID billId;
 
     private LocalDate scheduledDate;
 

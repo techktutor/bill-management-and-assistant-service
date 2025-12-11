@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.BillStatus;
 import com.wells.bill.assistant.entity.PaymentEntity;
-import com.wells.bill.assistant.model.PaymentIntentRequest;
 import com.wells.bill.assistant.model.ExecutePaymentRequest;
+import com.wells.bill.assistant.model.PaymentIntentRequest;
 import com.wells.bill.assistant.repository.BillRepository;
 import com.wells.bill.assistant.repository.PaymentRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,12 +44,12 @@ public class PaymentControllerIntegrationTest {
     private BillRepository billRepository;
 
     private UUID customerId;
-    private Long billId;
+    private UUID billId;
 
     @BeforeEach
     void setup() {
         customerId = UUID.randomUUID();
-        billId = 1L;
+        billId = UUID.randomUUID();
         paymentRepository.deleteAll();
     }
 
@@ -84,7 +84,7 @@ public class PaymentControllerIntegrationTest {
         bill.setAmount(new BigDecimal("20.00"));
         bill.setStatus(BillStatus.PENDING);
         bill.setDueDate(LocalDate.now().plusDays(1));
-        Long id = billRepository.save(bill).getId();
+        UUID id = billRepository.save(bill).getId();
 
         // First create an intent
         PaymentIntentRequest req = new PaymentIntentRequest();

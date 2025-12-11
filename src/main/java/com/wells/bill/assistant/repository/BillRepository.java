@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface BillRepository extends JpaRepository<BillEntity, Long> {
+public interface BillRepository extends JpaRepository<BillEntity, UUID> {
     List<BillEntity> findByDueDateBetween(LocalDate start, LocalDate end);
 
     List<BillEntity> findByDueDateBetweenAndStatusIn(

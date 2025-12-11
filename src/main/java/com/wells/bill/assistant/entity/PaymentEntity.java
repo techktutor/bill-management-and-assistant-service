@@ -35,7 +35,7 @@ public class PaymentEntity {
     private UUID customerId;
 
     @Column(name = "bill_id", nullable = false)
-    private Long billId;
+    private UUID billId;
 
     @Column(name = "merchant_id", nullable = false)
     private UUID merchantId;

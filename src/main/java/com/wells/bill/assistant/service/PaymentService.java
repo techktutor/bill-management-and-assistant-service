@@ -168,14 +168,14 @@ public class PaymentService {
 
     // -------------------- Scheduling Helpers --------------------
     @Transactional
-    public PaymentIntentResponse schedulePayment(Long billId, PaymentIntentRequest req) {
+    public PaymentIntentResponse schedulePayment(UUID billId, PaymentIntentRequest req) {
         LocalDate scheduledDate = req.getScheduledDate();
         // reuse existing schedulePayment method signature: create intent + set scheduledDate
         return schedulePayment(billId, req, scheduledDate);
     }
 
     @Transactional
-    public PaymentIntentResponse schedulePayment(Long billId, PaymentIntentRequest req, LocalDate scheduledDate) {
+    public PaymentIntentResponse schedulePayment(UUID billId, PaymentIntentRequest req, LocalDate scheduledDate) {
         // ensure idempotency key
         String idem = req.getIdempotencyKey();
         if (idem == null || idem.isBlank()) {

@@ -28,7 +28,7 @@ public class PaymentIntentResponse {
 
     private UUID customerId;
 
-    private Long billId;
+    private UUID billId;
 
     private LocalDate scheduledDate;
 

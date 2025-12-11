@@ -14,7 +14,7 @@ public class PaymentIntentRequest {
 
     private UUID customerId;
 
-    private Long billId;
+    private UUID billId;
 
     private UUID merchantId;
 

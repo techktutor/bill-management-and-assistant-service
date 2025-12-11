@@ -49,7 +49,7 @@ public class BillAssistantTool {
     // -----------------------------
 
     @Tool(name = "getBillById", description = "Retrieve bill details by bill ID.")
-    public BillCreateResponse getBillById(@ToolParam(description = "Bill ID") Long billId) {
+    public BillCreateResponse getBillById(@ToolParam(description = "Bill ID") UUID billId) {
         return billService.getBill(billId);
     }
 
@@ -77,7 +77,7 @@ public class BillAssistantTool {
      * Mark bill paid after validating the payment reference belongs to the bill and succeeded.
      */
     @Tool(name = "markBillPaid", description = "Mark bill as PAID. Validates payment belongs to bill and succeeded.")
-    public String markBillPaid(@ToolParam(description = "Bill ID") Long billId, @ToolParam(description = "Payment ID (optional)") String paymentId) {
+    public String markBillPaid(@ToolParam(description = "Bill ID") UUID billId, @ToolParam(description = "Payment ID (optional)") String paymentId) {
         try {
             if (paymentId == null || paymentId.isBlank()) {
                 // still allow marking paid without paymentId (manual override) but log warning
