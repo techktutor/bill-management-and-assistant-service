@@ -4,10 +4,12 @@ import com.wells.bill.assistant.entity.BillCategory;
 import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.BillStatus;
 import com.wells.bill.assistant.model.BillCreateRequest;
+import com.wells.bill.assistant.model.BillCreateResponse;
 import com.wells.bill.assistant.model.BillUpdateRequest;
 import com.wells.bill.assistant.repository.BillRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +29,7 @@ public class BillService {
     /**
      * Create a bill from DTO. Validates required fields and maps to entity.
      */
-    public BillEntity createBill(BillCreateRequest req) {
+    public BillCreateResponse createBill(BillCreateRequest req) {
         if (req.getCustomerId() == null) throw new IllegalArgumentException("customerId is required");
         if (req.getDueDate() == null) throw new IllegalArgumentException("dueDate is required");
         if (req.getAmount() == null || req.getAmount().compareTo(BigDecimal.ZERO) <= 0)
@@ -37,7 +39,7 @@ public class BillService {
 
         BillEntity saved = billRepository.save(billEntity);
         log.info("Bill created: id={} name={} due={}", saved.getId(), saved.getName(), saved.getDueDate());
-        return saved;
+        return toResponse(saved);
     }
 
     private static BillEntity getBillEntity(BillCreateRequest req) {
@@ -59,24 +61,37 @@ public class BillService {
         return billEntity;
     }
 
-    public BillEntity getBill(Long id) {
+    public BillCreateResponse getBill(Long id) {
+        BillEntity billEntity = getBillEntity(id);
+        return toResponse(billEntity);
+    }
+
+    private BillEntity getBillEntity(Long id) {
         return billRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Bill not found: " + id));
     }
 
-    public List<BillEntity> listAllBills() {
-        return billRepository.findAll();
-    }
-
-    public List<BillEntity> listByStatus(BillStatus status) {
-        return billRepository.findAll().stream()
-                .filter(b -> b.getStatus() == status)
+    public List<BillCreateResponse> listAllBills() {
+        return billRepository.findAll()
+                .stream()
+                .map(billEntity -> {
+                    BillCreateResponse response = new BillCreateResponse();
+                    BeanUtils.copyProperties(billEntity, response);
+                    return response;
+                })
                 .collect(Collectors.toList());
     }
 
+    public List<BillCreateResponse> listByStatus(BillStatus status) {
+        return billRepository.findByStatus(status)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     @Transactional
-    public BillEntity updateBill(Long id, BillUpdateRequest updates) {
-        BillEntity billEntity = getBill(id);
+    public BillCreateResponse updateBill(Long id, BillUpdateRequest updates) {
+        BillEntity billEntity = getBillEntity(id);
         if (updates.getName() != null) billEntity.setName(updates.getName());
         if (updates.getVendor() != null) billEntity.setVendor(updates.getVendor());
         if (updates.getCategory() != null) billEntity.setCategory(updates.getCategory());
@@ -88,7 +103,9 @@ public class BillService {
         if (updates.getSource() != null) billEntity.setSource(updates.getSource());
         BillEntity saved = billRepository.save(billEntity);
         log.info("Bill updated: id={}", saved.getId());
-        return saved;
+        BillCreateResponse response = new BillCreateResponse();
+        BeanUtils.copyProperties(saved, response);
+        return response;
     }
 
     public void deleteBill(Long id) {
@@ -101,7 +118,7 @@ public class BillService {
      */
     @Transactional
     public void markAsPaid(Long billId, String paymentId, boolean systemAction) {
-        BillEntity bill = getBill(billId);
+        BillEntity bill = getBillEntity(billId);
 
         if (bill.getStatus() == BillStatus.PAID) {
             log.warn("Attempt to mark an already PAID bill. billId={}", billId);
@@ -133,37 +150,45 @@ public class BillService {
      */
     @Transactional
     public void updateOverdue() {
-        List<BillEntity> bills = billRepository.findAll();
         LocalDate today = LocalDate.now();
-        bills.stream()
-                .filter(b -> b.getStatus() == BillStatus.PENDING && b.getDueDate() != null && b.getDueDate().isBefore(today))
-                .forEach(b -> {
-                    b.setStatus(BillStatus.OVERDUE);
-                    billRepository.save(b);
-                    log.warn("Bill {} marked OVERDUE", b.getId());
-                });
+
+        // Fetch only those bills that need to be updated
+        List<BillEntity> overdueBills = billRepository.findByStatusAndDueDateBefore(BillStatus.PENDING, today);
+
+        overdueBills.forEach(bill -> {
+            bill.setStatus(BillStatus.OVERDUE);
+            log.warn("Bill {} marked OVERDUE", bill.getId());
+        });
+
+        // Save all at once (better performance than multiple save calls)
+        billRepository.saveAll(overdueBills);
     }
 
-    public List<BillEntity> findByDueDateRange(LocalDate start, LocalDate end) {
-        return billRepository.findAll().stream()
-                .filter(b -> b.getDueDate() != null && !b.getDueDate().isBefore(start) && !b.getDueDate().isAfter(end))
-                .collect(Collectors.toList());
+    public List<BillCreateResponse> findByDueDateRange(LocalDate start, LocalDate end) {
+        return billRepository.findByDueDateBetween(start, end).stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public List<BillEntity> findUpcomingUnpaidBills(LocalDate start, LocalDate end) {
-        return billRepository.findAll().stream()
-                .filter(b -> b.getDueDate() != null && !b.getDueDate().isBefore(start) && !b.getDueDate().isAfter(end))
-                .filter(b -> b.getStatus() == BillStatus.PENDING || b.getStatus() == BillStatus.OVERDUE)
-                .collect(Collectors.toList());
+    public List<BillCreateResponse> findUpcomingUnpaidBills(LocalDate start, LocalDate end) {
+        return billRepository.findByDueDateBetweenAndStatusIn(start, end, List.of(BillStatus.PENDING, BillStatus.OVERDUE)).stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public List<BillEntity> findUnpaidByDueDateRange(LocalDate start, LocalDate end) {
+    public List<BillCreateResponse> findUnpaidByDueDateRange(LocalDate start, LocalDate end) {
         return findUpcomingUnpaidBills(start, end);
     }
 
-    public List<BillEntity> findAllUnpaid() {
-        return billRepository.findAll().stream()
-                .filter(b -> b.getStatus() == BillStatus.PENDING || b.getStatus() == BillStatus.OVERDUE)
-                .collect(Collectors.toList());
+    public List<BillCreateResponse> findAllUnpaid() {
+        return billRepository.findByStatusIn(List.of(BillStatus.PENDING, BillStatus.OVERDUE)).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    private BillCreateResponse toResponse(BillEntity bill) {
+        BillCreateResponse response = new BillCreateResponse();
+        BeanUtils.copyProperties(bill, response);
+        return response;
     }
 }

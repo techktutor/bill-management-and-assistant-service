@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class CreatePaymentIntentRequest {
+public class PaymentIntentRequest {
 
     private UUID customerId;
 
@@ -24,9 +24,6 @@ public class CreatePaymentIntentRequest {
 
     private String idempotencyKey;
 
-    /**
-     * Required only when paymentType == SCHEDULED.
-     */
     private LocalDate scheduledDate;
 
     private PaymentType paymentType;

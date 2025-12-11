@@ -1,7 +1,7 @@
 package com.wells.bill.assistant.tools;
 
-import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.PaymentEntity;
+import com.wells.bill.assistant.model.BillCreateResponse;
 import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.PaymentService;
 import com.wells.bill.assistant.service.RagEngineService;
@@ -49,27 +49,27 @@ public class BillAssistantTool {
     // -----------------------------
 
     @Tool(name = "getBillById", description = "Retrieve bill details by bill ID.")
-    public BillEntity getBillById(@ToolParam(description = "Bill ID") Long billId) {
+    public BillCreateResponse getBillById(@ToolParam(description = "Bill ID") Long billId) {
         return billService.getBill(billId);
     }
 
     @Tool(name = "listPendingBills", description = "List all unpaid bills (PENDING or OVERDUE).")
-    public List<BillEntity> listPendingBills() {
+    public List<BillCreateResponse> listPendingBills() {
         return billService.findAllUnpaid();
     }
 
     @Tool(name = "dueBillsNext7Days", description = "Bills due in next 7 days.")
-    public List<BillEntity> dueBillsNext7Days() {
+    public List<BillCreateResponse> dueBillsNext7Days() {
         return billService.findByDueDateRange(LocalDate.now(), LocalDate.now().plusDays(7));
     }
 
     @Tool(name = "findUpcomingUnpaidBills", description = "Unpaid bills due in next 7 days.")
-    public List<BillEntity> findUpcomingUnpaidBills() {
+    public List<BillCreateResponse> findUpcomingUnpaidBills() {
         return billService.findUnpaidByDueDateRange(LocalDate.now(), LocalDate.now().plusDays(7));
     }
 
     @Tool(name = "showUnpaidGroupedByVendor", description = "Group unpaid bills by vendor.")
-    public Map<String, List<BillEntity>> showUnpaidGroupedByVendor() {
+    public Map<String, List<BillCreateResponse>> showUnpaidGroupedByVendor() {
         return billService.findAllUnpaid().stream().collect(Collectors.groupingBy(b -> b.getVendor() == null ? "unknown" : b.getVendor()));
     }
 

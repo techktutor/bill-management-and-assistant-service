@@ -16,16 +16,21 @@ public interface BillRepository extends JpaRepository<BillEntity, Long> {
     List<BillEntity> findByDueDateBetweenAndStatusIn(
             LocalDate start,
             LocalDate end,
-            List<String> statusList
+            List<BillStatus> statusList
     );
 
     List<BillEntity> findByCustomerId(UUID customerId);
 
     List<BillEntity> findByCustomerIdAndStatus(UUID customerId, BillStatus status);
 
-    List<BillEntity> findByCustomerIdAndStatusIn(UUID customerId, List<BillStatus> statuses);
+    List<BillEntity> findByStatusIn(List<BillStatus> statuses);
 
     List<BillEntity> findByCustomerIdAndDueDateBetween(UUID customerId, LocalDate start, LocalDate end);
 
     List<BillEntity> findByVendorIgnoreCase(String vendor);
+
+    List<BillEntity> findByStatus(BillStatus status);
+
+    List<BillEntity> findByStatusAndDueDateBefore(BillStatus status, LocalDate date);
+
 }

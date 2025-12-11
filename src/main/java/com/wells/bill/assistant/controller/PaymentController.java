@@ -1,8 +1,7 @@
 package com.wells.bill.assistant.controller;
 
-import com.wells.bill.assistant.entity.PaymentEntity;
-import com.wells.bill.assistant.model.CreatePaymentIntentRequest;
 import com.wells.bill.assistant.model.ExecutePaymentRequest;
+import com.wells.bill.assistant.model.PaymentIntentRequest;
 import com.wells.bill.assistant.model.PaymentIntentResponse;
 import com.wells.bill.assistant.model.PaymentResponse;
 import com.wells.bill.assistant.service.PaymentService;
@@ -25,9 +24,9 @@ public class PaymentController {
     // Create Payment Intent
     // -----------------------------
     @PostMapping("/intent")
-    public ResponseEntity<PaymentIntentResponse> createIntent(@RequestBody CreatePaymentIntentRequest req) {
-        PaymentEntity entity = paymentService.createPaymentIntent(req);
-        return ResponseEntity.ok(paymentService.toIntentResponse(entity));
+    public ResponseEntity<PaymentIntentResponse> createIntent(@RequestBody PaymentIntentRequest req) {
+        PaymentIntentResponse paymentIntent = paymentService.createPaymentIntent(req);
+        return ResponseEntity.ok(paymentIntent);
     }
 
     // -----------------------------
@@ -39,20 +38,20 @@ public class PaymentController {
             @RequestBody ExecutePaymentRequest req
     ) {
         req.setPaymentId(paymentId);
-        PaymentEntity entity = paymentService.executePayment(paymentId, req);
-        return ResponseEntity.ok(paymentService.toPaymentResponse(entity));
+        PaymentResponse paymentResponse = paymentService.executePayment(paymentId, req);
+        return ResponseEntity.ok(paymentResponse);
     }
 
     // -----------------------------
     // Schedule Payment
     // -----------------------------
     @PostMapping("/schedule")
-    public ResponseEntity<PaymentIntentResponse> schedulePayment(@RequestBody CreatePaymentIntentRequest req) {
+    public ResponseEntity<PaymentIntentResponse> schedulePayment(@RequestBody PaymentIntentRequest req) {
         if (req.getScheduledDate() == null) {
             throw new IllegalArgumentException("scheduledDate is required for scheduling");
         }
-        PaymentEntity entity = paymentService.schedulePayment(req.getBillId(), req, req.getScheduledDate());
-        return ResponseEntity.ok(paymentService.toIntentResponse(entity));
+        PaymentIntentResponse paymentIntentResponse = paymentService.schedulePayment(req.getBillId(), req, req.getScheduledDate());
+        return ResponseEntity.ok(paymentIntentResponse);
     }
 
     // -----------------------------

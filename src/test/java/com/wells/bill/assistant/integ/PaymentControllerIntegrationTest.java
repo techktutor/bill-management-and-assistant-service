@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.BillStatus;
 import com.wells.bill.assistant.entity.PaymentEntity;
-import com.wells.bill.assistant.model.CreatePaymentIntentRequest;
+import com.wells.bill.assistant.model.PaymentIntentRequest;
 import com.wells.bill.assistant.model.ExecutePaymentRequest;
 import com.wells.bill.assistant.repository.BillRepository;
 import com.wells.bill.assistant.repository.PaymentRepository;
@@ -58,7 +58,7 @@ public class PaymentControllerIntegrationTest {
     // -----------------------------------------------------------
     @Test
     void testCreatePaymentIntent() throws Exception {
-        CreatePaymentIntentRequest req = new CreatePaymentIntentRequest();
+        PaymentIntentRequest req = new PaymentIntentRequest();
         req.setCustomerId(customerId);
         req.setBillId(billId);
         req.setMerchantId(UUID.randomUUID());
@@ -87,7 +87,7 @@ public class PaymentControllerIntegrationTest {
         Long id = billRepository.save(bill).getId();
 
         // First create an intent
-        CreatePaymentIntentRequest req = new CreatePaymentIntentRequest();
+        PaymentIntentRequest req = new PaymentIntentRequest();
         req.setCustomerId(UUID.randomUUID());
         req.setBillId(id);
         req.setMerchantId(UUID.randomUUID());
@@ -117,7 +117,7 @@ public class PaymentControllerIntegrationTest {
     // -----------------------------------------------------------
     @Test
     void testSchedulePayment() throws Exception {
-        CreatePaymentIntentRequest req = new CreatePaymentIntentRequest();
+        PaymentIntentRequest req = new PaymentIntentRequest();
         req.setCustomerId(customerId);
         req.setBillId(billId);
         req.setMerchantId(UUID.randomUUID());

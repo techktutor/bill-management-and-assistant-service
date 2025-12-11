@@ -1,8 +1,8 @@
 package com.wells.bill.assistant.controller;
 
-import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.BillStatus;
 import com.wells.bill.assistant.model.BillCreateRequest;
+import com.wells.bill.assistant.model.BillCreateResponse;
 import com.wells.bill.assistant.model.BillUpdateRequest;
 import com.wells.bill.assistant.service.BillService;
 import lombok.RequiredArgsConstructor;
@@ -25,16 +25,16 @@ public class BillController {
     // Create Bill
     // -----------------------------
     @PostMapping
-    public ResponseEntity<BillEntity> createBill(@RequestBody BillCreateRequest req) {
-        BillEntity entity = billService.createBill(req);
-        return ResponseEntity.ok(entity);
+    public ResponseEntity<BillCreateResponse> createBill(@RequestBody BillCreateRequest req) {
+        BillCreateResponse billCreateResponse = billService.createBill(req);
+        return ResponseEntity.ok(billCreateResponse);
     }
 
     // -----------------------------
     // Get Bill by ID
     // -----------------------------
     @GetMapping("/{billId}")
-    public ResponseEntity<BillEntity> getBill(@PathVariable Long billId) {
+    public ResponseEntity<BillCreateResponse> getBill(@PathVariable Long billId) {
         return ResponseEntity.ok(billService.getBill(billId));
     }
 
@@ -42,7 +42,7 @@ public class BillController {
     // List All Bills
     // -----------------------------
     @GetMapping
-    public ResponseEntity<List<BillEntity>> listAll() {
+    public ResponseEntity<List<BillCreateResponse>> listAll() {
         return ResponseEntity.ok(billService.listAllBills());
     }
 
@@ -50,7 +50,7 @@ public class BillController {
     // List Bills by Status
     // -----------------------------
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<BillEntity>> listByStatus(@PathVariable String status) {
+    public ResponseEntity<List<BillCreateResponse>> listByStatus(@PathVariable String status) {
         BillStatus billStatus = BillStatus.valueOf(status.toUpperCase());
         return ResponseEntity.ok(billService.listByStatus(billStatus));
     }
@@ -59,8 +59,8 @@ public class BillController {
     // Update Bill
     // -----------------------------
     @PutMapping("/{billId}")
-    public ResponseEntity<BillEntity> updateBill(@PathVariable Long billId,
-                                                 @RequestBody BillUpdateRequest req) {
+    public ResponseEntity<BillCreateResponse> updateBill(@PathVariable Long billId,
+                                                         @RequestBody BillUpdateRequest req) {
         return ResponseEntity.ok(billService.updateBill(billId, req));
     }
 
@@ -77,7 +77,7 @@ public class BillController {
     // List Upcoming Unpaid Bills (Next 7 Days)
     // -----------------------------
     @GetMapping("/upcoming")
-    public ResponseEntity<List<BillEntity>> upcoming() {
+    public ResponseEntity<List<BillCreateResponse>> upcoming() {
         LocalDate now = LocalDate.now();
         return ResponseEntity.ok(billService.findUpcomingUnpaidBills(now, now.plusDays(7)));
     }
@@ -86,7 +86,7 @@ public class BillController {
     // List All Unpaid Bills
     // -----------------------------
     @GetMapping("/unpaid")
-    public ResponseEntity<List<BillEntity>> unpaid() {
+    public ResponseEntity<List<BillCreateResponse>> unpaid() {
         return ResponseEntity.ok(billService.findAllUnpaid());
     }
 

@@ -13,19 +13,11 @@ import java.util.UUID;
 @Setter
 @Getter
 public class PaymentIntentResponse {
-    /**
-     * Public payment intent identifier (pay_xxx).
-     */
+
     private String paymentId;
 
-    /**
-     * Idempotency key used when creating this intent.
-     */
     private String idempotencyKey;
 
-    /**
-     * CREATED or SCHEDULED (intent is never SUCCESS).
-     */
     private PaymentStatus status;
 
     private PaymentType paymentType;
@@ -38,9 +30,6 @@ public class PaymentIntentResponse {
 
     private Long billId;
 
-    /**
-     * Applies only when paymentType == SCHEDULED.
-     */
     private LocalDate scheduledDate;
 
     private Instant createdAt;

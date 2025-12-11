@@ -5,9 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wells.bill.assistant.entity.PaymentEntity;
 import com.wells.bill.assistant.entity.PaymentStatus;
 import com.wells.bill.assistant.entity.PaymentType;
+import com.wells.bill.assistant.exception.DuplicatePaymentException;
+import com.wells.bill.assistant.exception.DuplicateScheduleException;
 import com.wells.bill.assistant.gateway.PaymentGatewayClient;
-import com.wells.bill.assistant.model.CreatePaymentIntentRequest;
 import com.wells.bill.assistant.model.ExecutePaymentRequest;
+import com.wells.bill.assistant.model.PaymentIntentRequest;
 import com.wells.bill.assistant.model.PaymentIntentResponse;
 import com.wells.bill.assistant.model.PaymentResponse;
 import com.wells.bill.assistant.repository.PaymentRepository;
@@ -43,13 +45,27 @@ public class PaymentService {
 
     // -------------------- Intent creation --------------------
     @Transactional
-    public PaymentEntity createPaymentIntent(CreatePaymentIntentRequest req) {
+    public PaymentIntentResponse createPaymentIntent(PaymentIntentRequest req) {
         // idempotency: if provided, return existing
         if (req.getIdempotencyKey() != null) {
             Optional<PaymentEntity> existing = paymentRepository.findByIdempotencyKey(req.getIdempotencyKey());
-            if (existing.isPresent()) return existing.get();
+            if (existing.isPresent()) {
+                throw new DuplicatePaymentException("Payment Already Exist!!");
+            }
         }
 
+        PaymentEntity paymentEntity = getPaymentEntity(req);
+
+        // NOTE: we do NOT accept cardToken here; card tokens should be provided when executing the payment.
+        // For scheduled payments, callers should pass a cardToken (and we store it in gatewayPayload if they do).
+
+        PaymentEntity savedPayment = paymentRepository.save(paymentEntity);
+
+        log.info("Created payment intent: {} bill={} type={}", savedPayment.getPaymentId(), savedPayment.getBillId(), savedPayment.getPaymentType());
+        return toIntentResponse(savedPayment);
+    }
+
+    private static PaymentEntity getPaymentEntity(PaymentIntentRequest req) {
         PaymentEntity paymentEntity = new PaymentEntity();
         paymentEntity.setCustomerId(req.getCustomerId());
         paymentEntity.setBillId(req.getBillId());
@@ -66,23 +82,19 @@ public class PaymentService {
         } else {
             paymentEntity.setStatus(PaymentStatus.CREATED);
         }
-
-        // NOTE: we do NOT accept cardToken here; card tokens should be provided when executing the payment.
-        // For scheduled payments, callers should pass a cardToken (and we store it in gatewayPayload if they do).
-
-        paymentRepository.save(paymentEntity);
-        log.info("Created payment intent: {} bill={} type={} idem={}", paymentEntity.getPaymentId(), paymentEntity.getBillId(), paymentEntity.getPaymentType(), paymentEntity.getIdempotencyKey());
         return paymentEntity;
     }
 
     // -------------------- Execute payment --------------------
     @Transactional
-    public PaymentEntity executePayment(String paymentId, ExecutePaymentRequest req) {
+    public PaymentResponse executePayment(String paymentId, ExecutePaymentRequest req) {
         PaymentEntity payment = paymentRepository.findByPaymentId(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment intent not found: " + paymentId));
 
         // Idempotent: if already successful just return
-        if (payment.getStatus() == PaymentStatus.SUCCESS) return payment;
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            return toPaymentResponse(payment);
+        }
 
         // Prevent parallel execution
         if (payment.getStatus() == PaymentStatus.PROCESSING) {
@@ -149,21 +161,21 @@ public class PaymentService {
             log.error("Error executing payment {}: {}", paymentId, ex.getMessage(), ex);
         }
 
-        paymentRepository.save(payment);
-        log.info("Payment {} execution finished with status={}", payment.getPaymentId(), payment.getStatus());
-        return payment;
+        PaymentEntity paymentEntity = paymentRepository.save(payment);
+        log.info("Payment {} execution finished with status={}", paymentEntity.getPaymentId(), paymentEntity.getStatus());
+        return toPaymentResponse(paymentEntity);
     }
 
     // -------------------- Scheduling Helpers --------------------
     @Transactional
-    public PaymentEntity schedulePayment(Long billId, CreatePaymentIntentRequest req) {
+    public PaymentIntentResponse schedulePayment(Long billId, PaymentIntentRequest req) {
         LocalDate scheduledDate = req.getScheduledDate();
         // reuse existing schedulePayment method signature: create intent + set scheduledDate
         return schedulePayment(billId, req, scheduledDate);
     }
 
     @Transactional
-    public PaymentEntity schedulePayment(Long billId, CreatePaymentIntentRequest req, LocalDate scheduledDate) {
+    public PaymentIntentResponse schedulePayment(Long billId, PaymentIntentRequest req, LocalDate scheduledDate) {
         // ensure idempotency key
         String idem = req.getIdempotencyKey();
         if (idem == null || idem.isBlank()) {
@@ -172,7 +184,9 @@ public class PaymentService {
         }
 
         Optional<PaymentEntity> existing = paymentRepository.findByIdempotencyKey(idem);
-        if (existing.isPresent()) return existing.get();
+        if (existing.isPresent()) {
+            throw new DuplicateScheduleException("Payment Schedule Already Exist!!");
+        }
 
         PaymentEntity paymentEntity = new PaymentEntity();
         paymentEntity.setCustomerId(req.getCustomerId());
@@ -185,9 +199,9 @@ public class PaymentService {
         paymentEntity.setScheduledDate(scheduledDate);
         paymentEntity.setStatus(PaymentStatus.SCHEDULED);
 
-        paymentRepository.save(paymentEntity);
+        PaymentEntity savedPayment = paymentRepository.save(paymentEntity);
         log.info("Scheduled payment created: {} scheduledDate={} idem={}", paymentEntity.getPaymentId(), scheduledDate, idem);
-        return paymentEntity;
+        return toIntentResponse(savedPayment);
     }
 
     @Transactional
@@ -258,37 +272,37 @@ public class PaymentService {
     }
 
     public PaymentIntentResponse toIntentResponse(PaymentEntity p) {
-        PaymentIntentResponse r = new PaymentIntentResponse();
-        r.setPaymentId(p.getPaymentId());
-        r.setIdempotencyKey(p.getIdempotencyKey());
-        r.setStatus(p.getStatus());
-        r.setPaymentType(p.getPaymentType());
-        r.setAmount(p.getAmount());
-        r.setCurrency(p.getCurrency());
-        r.setCustomerId(p.getCustomerId());
-        r.setBillId(p.getBillId());
-        r.setScheduledDate(p.getScheduledDate());
-        r.setCreatedAt(p.getCreatedAt());
-        r.setUpdatedAt(p.getUpdatedAt());
-        return r;
+        PaymentIntentResponse paymentIntentResponse = new PaymentIntentResponse();
+        paymentIntentResponse.setPaymentId(p.getPaymentId());
+        paymentIntentResponse.setIdempotencyKey(p.getIdempotencyKey());
+        paymentIntentResponse.setStatus(p.getStatus());
+        paymentIntentResponse.setPaymentType(p.getPaymentType());
+        paymentIntentResponse.setAmount(p.getAmount());
+        paymentIntentResponse.setCurrency(p.getCurrency());
+        paymentIntentResponse.setCustomerId(p.getCustomerId());
+        paymentIntentResponse.setBillId(p.getBillId());
+        paymentIntentResponse.setScheduledDate(p.getScheduledDate());
+        paymentIntentResponse.setCreatedAt(p.getCreatedAt());
+        paymentIntentResponse.setUpdatedAt(p.getUpdatedAt());
+        return paymentIntentResponse;
     }
 
     public PaymentResponse toPaymentResponse(PaymentEntity p) {
-        PaymentResponse r = new PaymentResponse();
-        r.setPaymentId(p.getPaymentId());
-        r.setStatus(p.getStatus());
-        r.setPaymentType(p.getPaymentType());
-        r.setAmount(p.getAmount());
-        r.setCurrency(p.getCurrency());
-        r.setCustomerId(p.getCustomerId());
-        r.setBillId(p.getBillId());
-        r.setScheduledDate(p.getScheduledDate());
-        r.setExecutedAt(p.getExecutedAt());
-        r.setCancelledAt(p.getCancelledAt());
-        r.setGatewayReference(p.getGatewayReference());
-        r.setFailureReason(p.getFailureReason());
-        r.setCreatedAt(p.getCreatedAt());
-        r.setUpdatedAt(p.getUpdatedAt());
-        return r;
+        PaymentResponse paymentResponse = new PaymentResponse();
+        paymentResponse.setPaymentId(p.getPaymentId());
+        paymentResponse.setStatus(p.getStatus());
+        paymentResponse.setPaymentType(p.getPaymentType());
+        paymentResponse.setAmount(p.getAmount());
+        paymentResponse.setCurrency(p.getCurrency());
+        paymentResponse.setCustomerId(p.getCustomerId());
+        paymentResponse.setBillId(p.getBillId());
+        paymentResponse.setScheduledDate(p.getScheduledDate());
+        paymentResponse.setExecutedAt(p.getExecutedAt());
+        paymentResponse.setCancelledAt(p.getCancelledAt());
+        paymentResponse.setGatewayReference(p.getGatewayReference());
+        paymentResponse.setFailureReason(p.getFailureReason());
+        paymentResponse.setCreatedAt(p.getCreatedAt());
+        paymentResponse.setUpdatedAt(p.getUpdatedAt());
+        return paymentResponse;
     }
 }

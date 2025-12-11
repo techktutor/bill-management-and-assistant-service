@@ -1,7 +1,7 @@
 package com.wells.bill.assistant.tools;
 
-import com.wells.bill.assistant.entity.PaymentEntity;
-import com.wells.bill.assistant.model.CreatePaymentIntentRequest;
+import com.wells.bill.assistant.model.PaymentIntentRequest;
+import com.wells.bill.assistant.model.PaymentIntentResponse;
 import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.PaymentService;
 import lombok.AllArgsConstructor;
@@ -47,7 +47,7 @@ public class PaymentAssistantTool {
                 return "Payment failed: Invalid card token format.";
             }
 
-            CreatePaymentIntentRequest req = buildPaymentRequest(amount, merchantId, customerId);
+            PaymentIntentRequest req = buildPaymentRequest(amount, merchantId, customerId);
 
             String paymentId = paymentService.createPaymentIntent(req).getPaymentId();
             log.info("Instant payment created: paymentId={}, billId={}, amount=${}", paymentId, billId, amount);
@@ -94,11 +94,11 @@ public class PaymentAssistantTool {
                 return "Scheduling failed: Invalid date format (yyyy-MM-dd).";
             }
 
-            CreatePaymentIntentRequest req = buildPaymentRequest(amount, merchantId, customerId);
-            PaymentEntity sp = paymentService.schedulePayment(Long.valueOf(billId), req, scheduledDate);
+            PaymentIntentRequest req = buildPaymentRequest(amount, merchantId, customerId);
+            PaymentIntentResponse sp = paymentService.schedulePayment(Long.valueOf(billId), req, scheduledDate);
 
-            log.info("Scheduled payment created: id={}, billId={}, date={}, amount=${}", sp.getId(), billId, date, amount);
-            return String.format("Payment scheduled. Scheduled Payment ID: %s | Date: %s | Amount: $%.2f", sp.getId(), date, amount);
+            log.info("Scheduled payment created: id={}, billId={}, date={}, amount=${}", sp.getPaymentId(), billId, date, amount);
+            return String.format("Payment scheduled. Scheduled Payment ID: %s | Date: %s | Amount: $%.2f", sp.getPaymentId(), date, amount);
         } catch (Exception e) {
             log.error("Payment scheduling failed: billId={}, date={}, error={}", billId, date, e.getMessage());
             return "Scheduling failed: " + sanitize(e.getMessage());
@@ -147,12 +147,8 @@ public class PaymentAssistantTool {
         return token != null && token.matches("^(tok|card)_[A-Za-z0-9_]+$");
     }
 
-    private long toCents(Double amount) {
-        return (long) (amount * 100);
-    }
-
-    private CreatePaymentIntentRequest buildPaymentRequest(Double amount, String merchantId, String customerId) {
-        CreatePaymentIntentRequest req = new CreatePaymentIntentRequest();
+    private PaymentIntentRequest buildPaymentRequest(Double amount, String merchantId, String customerId) {
+        PaymentIntentRequest req = new PaymentIntentRequest();
         req.setMerchantId(UUID.fromString(merchantId));
         req.setCustomerId(UUID.fromString(customerId));
         req.setAmount(new BigDecimal(amount));
