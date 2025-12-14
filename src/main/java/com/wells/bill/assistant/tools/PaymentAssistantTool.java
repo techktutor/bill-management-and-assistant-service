@@ -1,162 +1,126 @@
 package com.wells.bill.assistant.tools;
 
+import com.wells.bill.assistant.entity.BillStatus;
+import com.wells.bill.assistant.model.BillCreateResponse;
 import com.wells.bill.assistant.model.PaymentIntentRequest;
 import com.wells.bill.assistant.model.PaymentIntentResponse;
 import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.PaymentService;
 import lombok.AllArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+@Slf4j
 @Component
 @AllArgsConstructor
 public class PaymentAssistantTool {
 
-    private static final Logger log = LoggerFactory.getLogger(PaymentAssistantTool.class);
-
     private static final String DEFAULT_CURRENCY = "USD";
-    private static final double MAX_AMOUNT = 1000000.0;
 
     private final BillService billService;
     private final PaymentService paymentService;
 
-    @Tool(name = "payBill", description = "Make an immediate payment. Requires explicit confirmation. Parameters: billId, amount, cardToken, merchantId, customerId, confirm=true")
-    public String payBill(@ToolParam(description = "Bill identifier") String billId, @ToolParam(description = "Amount in USD (e.g., 150.50)") Double amount, @ToolParam(description = "Tokenized card reference") String cardToken, @ToolParam(description = "Merchant UUID") String merchantId, @ToolParam(description = "Customer UUID") String customerId, @ToolParam(description = "User confirmation: must be true to execute payment") Boolean confirm) {
-        try {
-            if (!Boolean.TRUE.equals(confirm)) {
-                return "Payment not executed. Please confirm with: confirm=true";
-            }
-
-            if (isInvalidInput(billId, amount, cardToken, merchantId, customerId)) {
-                log.warn("Invalid payment inputs: billId={}, amount={}, merchantId={}, customerId={}", billId, amount, merchantId, customerId);
-                return "Payment failed: Invalid input parameters.";
-            }
-
-            if (amount > MAX_AMOUNT) {
-                return "Payment failed: Amount exceeds system limit.";
-            }
-
-            if (!isValidToken(cardToken)) {
-                return "Payment failed: Invalid card token format.";
-            }
-
-            PaymentIntentRequest req = buildPaymentRequest(amount, merchantId, customerId);
-
-            String paymentId = paymentService.createPaymentIntent(req).getPaymentId();
-            log.info("Instant payment created: paymentId={}, billId={}, amount=${}", paymentId, billId, amount);
-            billService.markAsPaid(UUID.fromString(billId), paymentId, true);
-            return String.format("Payment successful. Payment ID: %s | Amount: $%.2f", paymentId, amount);
-        } catch (IllegalArgumentException e) {
-            log.error("Invalid UUID format in payment request: {}", e.getMessage());
-            return "Payment failed: Invalid merchant or customer ID format.";
-        } catch (Exception e) {
-            log.error("Payment creation failed: billId={}, amount={}, error={}", billId, amount, e.getMessage());
-            return "Payment failed: " + sanitize(e.getMessage());
+    @Tool(name = "createPaymentIntent",
+            description = "Create a payment intent for a bill. Does NOT execute payment. Requires confirmation.")
+    public String createPaymentIntent(
+            @ToolParam(description = "Bill ID") String billId,
+            @ToolParam(description = "Merchant UUID") String merchantId,
+            @ToolParam(description = "Customer UUID") String customerId,
+            @ToolParam(description = "User confirmation (must be true)") Boolean confirm
+    ) {
+        if (!Boolean.TRUE.equals(confirm)) {
+            return "Payment intent not created. Please confirm with confirm=true.";
         }
-    }
 
-    @Tool(name = "schedulePayment", description = "Schedule a future payment. Requires date in yyyy-MM-dd format.")
-    public String schedulePayment(@ToolParam(description = "Bill identifier") String billId, @ToolParam(description = "Amount in USD (e.g., 150.50)") Double amount, @ToolParam(description = "Payment date in ISO format: yyyy-MM-dd") String date, @ToolParam(description = "Tokenized card reference") String cardToken, @ToolParam(description = "Merchant UUID") String merchantId, @ToolParam(description = "Customer UUID") String customerId, @ToolParam(description = "User confirmation: must be true to schedule payment") Boolean confirm) {
         try {
-            if (!Boolean.TRUE.equals(confirm)) {
-                return "Payment not scheduled. Please confirm with: confirm=true";
+            UUID billUUID = UUID.fromString(billId);
+            UUID merchantUUID = UUID.fromString(merchantId);
+            UUID customerUUID = UUID.fromString(customerId);
+
+            BillCreateResponse bill = billService.getBill(billUUID);
+
+            if (bill.getStatus() != BillStatus.PAYMENT_READY) {
+                return "Bill is not ready for payment.";
             }
 
-            if (isInvalidInput(billId, amount, cardToken, merchantId, customerId)) {
-                log.warn("Invalid scheduled payment inputs: billId={}, date={}, merchantId={}", billId, date, merchantId);
-                return "Scheduling failed: Invalid input parameters.";
-            }
+            PaymentIntentRequest req = new PaymentIntentRequest();
+            req.setBillId(billUUID);
+            req.setMerchantId(merchantUUID);
+            req.setCustomerId(customerUUID);
+            req.setAmount(bill.getAmount());
+            req.setCurrency(DEFAULT_CURRENCY);
 
-            if (amount > MAX_AMOUNT) {
-                return "Scheduling failed: Amount exceeds system limit.";
-            }
+            PaymentIntentResponse intent = paymentService.createPaymentIntent(req);
 
-            if (!isValidToken(cardToken)) {
-                return "Scheduling failed: Invalid card token format.";
-            }
+            log.info("Payment intent created via AI tool: paymentId={} billId={}",
+                    intent.getPaymentId(), billId);
 
-            LocalDate scheduledDate;
-            try {
-                scheduledDate = LocalDate.parse(date);
-                if (scheduledDate.isBefore(LocalDate.now())) {
-                    log.warn("Scheduled date is in the past: {}", date);
-                    return "Scheduling failed: Date must be in the future.";
-                }
-            } catch (Exception e) {
-                log.error("Invalid date format: {}", date);
-                return "Scheduling failed: Invalid date format (yyyy-MM-dd).";
-            }
-
-            PaymentIntentRequest req = buildPaymentRequest(amount, merchantId, customerId);
-            PaymentIntentResponse sp = paymentService.schedulePayment(UUID.fromString(billId), req, scheduledDate);
-
-            log.info("Scheduled payment created: id={}, billId={}, date={}, amount=${}", sp.getPaymentId(), billId, date, amount);
-            return String.format("Payment scheduled. Scheduled Payment ID: %s | Date: %s | Amount: $%.2f", sp.getPaymentId(), date, amount);
-        } catch (Exception e) {
-            log.error("Payment scheduling failed: billId={}, date={}, error={}", billId, date, e.getMessage());
-            return "Scheduling failed: " + sanitize(e.getMessage());
-        }
-    }
-
-    @Tool(name = "cancelScheduledPayment", description = "Cancel a scheduled payment by its UUID.")
-    public String cancelScheduledPayment(@ToolParam(description = "Scheduled Payment UUID") String scheduledPaymentId, @ToolParam(description = "User confirmation: must be true to cancel payment") Boolean confirm) {
-        try {
-            if (!Boolean.TRUE.equals(confirm)) {
-                return "Cancel not executed. Please confirm with: confirm=true";
-            }
-
-            if (scheduledPaymentId == null || scheduledPaymentId.isBlank()) {
-                log.warn("Empty scheduled payment ID provided");
-                return "Cancel failed: Scheduled Payment ID is required.";
-            }
-
-            UUID id = UUID.fromString(scheduledPaymentId);
-            boolean cancelled = paymentService.cancelScheduledPayment(id);
-
-            if (cancelled) {
-                log.info("Scheduled payment cancelled: {}", id);
-                return String.format("Scheduled payment %s has been cancelled.", id);
-            }
-
-            log.warn("Cancellation failed: {} not found or already processed", id);
-            return "Cancel failed: Payment not found or already processed.";
+            return String.format(
+                    "Payment intent created successfully. Payment ID: %s. Please confirm execution.",
+                    intent.getPaymentId()
+            );
 
         } catch (IllegalArgumentException e) {
-            log.error("Invalid scheduled payment ID: {}", scheduledPaymentId);
-            return "Cancel failed: Invalid Scheduled Payment ID (must be UUID).";
+            return "Invalid UUID provided.";
         } catch (Exception e) {
-            log.error("Cancel operation failed for {}: {}", scheduledPaymentId, e.getMessage());
-            return "Cancel failed: " + sanitize(e.getMessage());
+            log.error("Failed to create payment intent via AI tool", e);
+            return "Failed to create payment intent: " + e.getMessage();
         }
     }
 
-    // ---------------------- Helper Methods ----------------------
+    @Tool(name = "schedulePaymentIntent",
+            description = "Schedule a payment intent for a future date. Does NOT execute payment.")
+    public String schedulePaymentIntent(
+            @ToolParam(description = "Bill ID") String billId,
+            @ToolParam(description = "Merchant UUID") String merchantId,
+            @ToolParam(description = "Customer UUID") String customerId,
+            @ToolParam(description = "Scheduled date (yyyy-MM-dd)") String date,
+            @ToolParam(description = "User confirmation (must be true)") Boolean confirm
+    ) {
+        if (!Boolean.TRUE.equals(confirm)) {
+            return "Payment not scheduled. Please confirm with confirm=true.";
+        }
 
-    private boolean isInvalidInput(String billId, Double amount, String cardToken, String merchantId, String customerId) {
-        return billId == null || billId.isBlank() || amount == null || amount <= 0 || cardToken == null || cardToken.isBlank() || merchantId == null || merchantId.isBlank() || customerId == null || customerId.isBlank();
-    }
+        try {
+            UUID billUUID = UUID.fromString(billId);
+            UUID merchantUUID = UUID.fromString(merchantId);
+            UUID customerUUID = UUID.fromString(customerId);
+            LocalDate scheduledDate = LocalDate.parse(date);
 
-    private boolean isValidToken(String token) {
-        return token != null && token.matches("^(tok|card)_[A-Za-z0-9_]+$");
-    }
+            if (scheduledDate.isBefore(LocalDate.now())) {
+                return "Scheduled date must be in the future.";
+            }
 
-    private PaymentIntentRequest buildPaymentRequest(Double amount, String merchantId, String customerId) {
-        PaymentIntentRequest req = new PaymentIntentRequest();
-        req.setMerchantId(UUID.fromString(merchantId));
-        req.setCustomerId(UUID.fromString(customerId));
-        req.setAmount(new BigDecimal(amount));
-        req.setCurrency(DEFAULT_CURRENCY);
-        return req;
-    }
+            BillCreateResponse bill = billService.getBill(billUUID);
+            if (bill.getStatus() != BillStatus.PAYMENT_READY) {
+                return "Bill is not ready for scheduled payment.";
+            }
 
-    private String sanitize(String message) {
-        return message == null ? "Unknown error" : message.replaceAll("[\\[\\]]", " ");
+            PaymentIntentRequest req = new PaymentIntentRequest();
+            req.setMerchantId(merchantUUID);
+            req.setCustomerId(customerUUID);
+            req.setAmount(bill.getAmount());
+            req.setCurrency(DEFAULT_CURRENCY);
+
+            PaymentIntentResponse intent =
+                    paymentService.schedulePayment(billUUID, req, scheduledDate);
+
+            log.info("Scheduled payment intent created via AI tool: paymentId={} date={}",
+                    intent.getPaymentId(), date);
+
+            return String.format(
+                    "Payment scheduled successfully. Payment ID: %s on %s.",
+                    intent.getPaymentId(), date
+            );
+
+        } catch (Exception e) {
+            log.error("Failed to schedule payment intent via AI tool", e);
+            return "Failed to schedule payment: " + e.getMessage();
+        }
     }
 }

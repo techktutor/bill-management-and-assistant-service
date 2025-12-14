@@ -37,66 +37,62 @@ public class PaymentEntity {
     @Column(name = "bill_id", nullable = false)
     private UUID billId;
 
-    @Column(name = "merchant_id", nullable = false)
-    private UUID merchantId;
-
-    @Column(name = "currency", length = 3, nullable = false)
+    @Column(nullable = false, length = 3)
     private String currency;
 
-    @Column(name = "amount", nullable = false, precision = 14, scale = 2)
+    @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_type", nullable = false)
-    private PaymentType paymentType;
+    @Column(nullable = false)
+    private PaymentType paymentType; // INSTANT / SCHEDULED
 
     @Column(name = "scheduled_date")
     private LocalDate scheduledDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @Column(nullable = false)
     private PaymentStatus status;
 
     @Column(name = "idempotency_key", unique = true)
     private String idempotencyKey;
 
-    @Column(name = "gateway_reference", length = 200)
+    // ===== AI / Approval Guardrails =====
+    @Column(name = "approval_source", length = 20, nullable = false)
+    private String approvalSource; // USER, AI_SUGGESTED, SYSTEM
+
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
+    // ===== Gateway =====
     private String gatewayReference;
 
-    @Column(name = "failure_reason", length = 2000)
-    private String failureReason;
-
     @Lob
-    @Column(name = "gateway_payload", columnDefinition = "text")
     private String gatewayPayload;
 
-    @Column(name = "executed_at")
-    private Instant executedAt;
+    private String failureReason;
 
-    @Column(name = "cancelled_at")
+    private Instant executedAt;
     private Instant cancelledAt;
 
-    @Column(name = "created_at", nullable = false)
     private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
     @PrePersist
-    public void prePersist() {
+    void prePersist() {
         Instant now = Instant.now();
-        this.createdAt = now;
-        this.updatedAt = now;
-        if (this.paymentId == null) this.paymentId = "pay_" + UUID.randomUUID();
-        if (this.status == null) {
-            this.status = (this.paymentType == PaymentType.SCHEDULED)
+        createdAt = now;
+        updatedAt = now;
+        if (paymentId == null) paymentId = "pay_" + UUID.randomUUID();
+        if (status == null) {
+            status = (paymentType == PaymentType.SCHEDULED)
                     ? PaymentStatus.SCHEDULED
                     : PaymentStatus.CREATED;
         }
     }
 
     @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = Instant.now();
+    void preUpdate() {
+        updatedAt = Instant.now();
     }
 }

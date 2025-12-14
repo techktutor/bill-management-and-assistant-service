@@ -4,5 +4,11 @@ public enum BillStatus {
     PENDING,
     PAID,
     OVERDUE,
-    CANCELLED
+    UPLOADED,
+    CANCELLED,
+    INGESTING,
+    INGESTED,
+    VERIFIED,
+    PAYMENT_READY,
+    FAILED
 }

@@ -40,14 +40,6 @@ public class BillController {
     }
 
     // -----------------------------
-    // List All Bills
-    // -----------------------------
-    @GetMapping
-    public ResponseEntity<List<BillCreateResponse>> listAll() {
-        return ResponseEntity.ok(billService.listAllBills());
-    }
-
-    // -----------------------------
     // List Bills by Status
     // -----------------------------
     @GetMapping("/status/{status}")
@@ -62,15 +54,6 @@ public class BillController {
     @PutMapping("/{billId}")
     public ResponseEntity<BillCreateResponse> updateBill(@PathVariable UUID billId, @RequestBody BillUpdateRequest req) {
         return ResponseEntity.ok(billService.updateBill(billId, req));
-    }
-
-    // -----------------------------
-    // Delete Bill
-    // -----------------------------
-    @DeleteMapping("/{billId}")
-    public ResponseEntity<Void> deleteBill(@PathVariable UUID billId) {
-        billService.deleteBill(billId);
-        return ResponseEntity.noContent().build();
     }
 
     // -----------------------------
@@ -98,14 +81,4 @@ public class BillController {
         billService.updateOverdue();
         return ResponseEntity.ok("Overdue bills updated");
     }
-
-    @PostMapping("/{billId}/markPaid/{paymentId}")
-    public ResponseEntity<String> markPaid(
-            @PathVariable UUID billId,
-            @RequestParam(required = false) String paymentId
-    ) {
-        billService.markAsPaid(billId, paymentId, false);
-        return ResponseEntity.ok("Bill marked as PAID");
-    }
-
 }

@@ -1,37 +1,37 @@
 package com.wells.bill.assistant.service;
 
-import com.wells.bill.assistant.tools.*;
+import com.wells.bill.assistant.tools.BillAssistantTool;
+import com.wells.bill.assistant.tools.PaymentAssistantTool;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AssistantOrchestratorService {
 
-    private static final Logger log = LoggerFactory.getLogger(AssistantOrchestratorService.class);
+    private static final String DEFAULT_RESPONSE =
+            "I apologize, but I encountered an error processing your request. Please try again.";
 
-    private static final String DEFAULT_RESPONSE = "I apologize, but I encountered an error processing your request. Please try again.";
     private static final String SYSTEM_PROMPT = """
-            You are an AI Bill Advisor assistant. Your responsibilities:
-            - Answer questions about user bills using retrieved billing data.
-            - Help users schedule and make payments using available tools.
-            - Provide helpful suggestions for bill management.
-            - Understanding bill details
-            - Managing payments
-            - Retrieving relevant bill information
+            You are an AI Bill Advisor assistant.
+            Responsibilities:
+            - Answer questions about user bills using retrieved billing data
+            - Help users create and manage payment intents (NOT execute payments)
+            - Provide helpful suggestions for bill management
             
-            Guidelines:
-            - If you don't have enough billing data to answer, say: "I do not have sufficient information from your bills to answer this question."
-            - Use payment tools only when explicitly requested by the user.
-            - Always confirm payment actions before executing.
-            - Never execute payments without explicit user confirmation.
-            - Be concise, factual, and safe.
+            Safety rules (MANDATORY):
+            - You MUST NOT execute payments
+            - You MUST NOT mark bills as PAID
+            - Payment execution happens only after explicit confirmation
+            - Use payment tools only when user intent is clearly payment-related
+            - If confirmation is missing, ask for it
+            - If you do not have enough information, say so clearly
             """;
 
     private final ChatMemory chatMemory;
@@ -39,6 +39,7 @@ public class AssistantOrchestratorService {
     private final BillAssistantTool billAssistantTool;
     private final PaymentAssistantTool paymentAssistantTool;
     private final RetrievalAugmentationAdvisor ragAdvisor;
+    private final PaymentConfirmationGuard paymentConfirmationGuard;
 
     public String processMessage(String conversationId, String userMessage) {
         try {
@@ -48,14 +49,32 @@ public class AssistantOrchestratorService {
                     .conversationId(conversationId)
                     .build();
 
-            // Call model with proper advisor chain
+            // ------------------------------------------------------------
+            // Payment confirmation & intent guard (deterministic)
+            // ------------------------------------------------------------
+            PaymentConfirmationGuard.GuardResult guard = paymentConfirmationGuard.evaluate(conversationId, userMessage);
+
+            // If guard needs to respond directly (missing bill / confirmation)
+            if (guard.userMessage() != null) {
+                return guard.userMessage();
+            }
+
+            // ------------------------------------------------------------
+            // Tool gating based on guard result
+            // ------------------------------------------------------------
+            Object[] tools = (guard.paymentIntent() && guard.confirmed())
+                    ? new Object[]{paymentAssistantTool, billAssistantTool}
+                    : new Object[]{billAssistantTool};
+
+            // ------------------------------------------------------------
+            // LLM invocation
+            // ------------------------------------------------------------
             String response = chatClient
                     .prompt()
                     .system(SYSTEM_PROMPT)
                     .user(userMessage)
-                    .advisors(memoryAdvisor)  // Memory advisor manages conversation history
-                    .advisors(ragAdvisor)  // RAG advisor retrieves and augments context
-                    .tools(paymentAssistantTool, billAssistantTool)
+                    .advisors(memoryAdvisor, ragAdvisor)
+                    .tools(tools)
                     .call()
                     .content();
 
@@ -63,13 +82,9 @@ public class AssistantOrchestratorService {
                 log.warn("Empty response from LLM for conversationId={}", conversationId);
                 return DEFAULT_RESPONSE;
             }
-            log.info("Message processed successfully for conversationId={}", conversationId);
             return response;
-        } catch (IllegalArgumentException e) {
-            log.error("Validation error in processMessage: {}", e.getMessage());
-            return "Invalid input: " + e.getMessage();
         } catch (Exception e) {
-            log.error("Error processing message for conversationId={}: {}", conversationId, e.getMessage(), e);
+            log.error("Error processing message for conversationId={}", conversationId, e);
             return DEFAULT_RESPONSE;
         }
     }

@@ -14,7 +14,7 @@ import java.util.UUID;
 @Setter
 public class BillCreateResponse {
 
-    private Long id;
+    private UUID id;
 
     private UUID customerId;
 

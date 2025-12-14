@@ -2,6 +2,7 @@ package com.wells.bill.assistant.repository;
 
 import com.wells.bill.assistant.entity.PaymentEntity;
 import com.wells.bill.assistant.entity.PaymentStatus;
+import com.wells.bill.assistant.entity.PaymentType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -18,11 +19,13 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, UUID> {
     // FIXED: paymentId is a String
     Optional<PaymentEntity> findByPaymentId(String paymentId);
 
-    // FIXED: customerId is UUID in entity
-    List<PaymentEntity> findByCustomerId(UUID customerId);
-
     List<PaymentEntity> findByStatusAndScheduledDateLessThanEqual(
             PaymentStatus paymentStatus,
             LocalDate asOfDate
     );
+
+    List<PaymentEntity> findByPaymentTypeAndStatusAndScheduledDateLessThanEqual(
+            PaymentType paymentType,
+            PaymentStatus paymentStatus,
+            LocalDate asOfDate);
 }

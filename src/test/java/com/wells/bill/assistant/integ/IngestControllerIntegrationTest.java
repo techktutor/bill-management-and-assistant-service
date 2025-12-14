@@ -13,7 +13,11 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -46,7 +50,7 @@ public class IngestControllerIntegrationTest {
                 "file", "test.pdf", MediaType.APPLICATION_PDF_VALUE, "dummy-content".getBytes()
         );
 
-        Mockito.when(ingestionService.ingestFile(Mockito.any())).thenReturn(4);
+        Mockito.when(ingestionService.ingestFile(any(UUID.class), any(MultipartFile.class))).thenReturn(4);
 
         mvc.perform(multipart("/api/ingest/file").file(file))
                 .andExpect(status().isOk())

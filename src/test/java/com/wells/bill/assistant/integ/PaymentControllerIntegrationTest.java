@@ -142,7 +142,6 @@ public class PaymentControllerIntegrationTest {
         PaymentEntity scheduled = new PaymentEntity();
         scheduled.setCustomerId(customerId);
         scheduled.setBillId(billId);
-        scheduled.setMerchantId(UUID.randomUUID());
         scheduled.setAmount(new BigDecimal("22.00"));
         scheduled.setCurrency("USD");
         scheduled.setStatus(com.wells.bill.assistant.entity.PaymentStatus.SCHEDULED);
@@ -168,7 +167,6 @@ public class PaymentControllerIntegrationTest {
         p.setPaymentId("pay_lookup_001");
         p.setCustomerId(customerId);
         p.setBillId(billId);
-        p.setMerchantId(UUID.randomUUID());
         p.setAmount(BigDecimal.valueOf(12.34));
         p.setCurrency("USD");
         p.setStatus(com.wells.bill.assistant.entity.PaymentStatus.CREATED);
