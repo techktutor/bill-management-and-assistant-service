@@ -1,4 +1,4 @@
-package com.wells.bill.assistant.service;
+package com.wells.bill.assistant.builder;
 
 import java.util.Arrays;
 import java.util.Collection;

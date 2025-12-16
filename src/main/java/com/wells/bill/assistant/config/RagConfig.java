@@ -52,7 +52,7 @@ public class RagConfig {
                 Question:
                 {query}
                 
-                RRetrieved Bill Context (each chunk may include metadata like filename, chunk_index, ingested_at):
+                Retrieved Bill Context (each chunk may include metadata like filename, chunk_index, ingested_at):
                 {context}
                 
                 Rules:

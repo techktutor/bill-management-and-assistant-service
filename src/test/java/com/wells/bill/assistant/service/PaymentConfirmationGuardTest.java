@@ -1,5 +1,6 @@
 package com.wells.bill.assistant.service;
 
+import com.wells.bill.assistant.store.InMemoryConversationStateStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

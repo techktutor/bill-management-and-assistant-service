@@ -3,6 +3,7 @@ package com.wells.bill.assistant.controller;
 import com.wells.bill.assistant.entity.BillStatus;
 import com.wells.bill.assistant.model.BillCreateRequest;
 import com.wells.bill.assistant.model.BillCreateResponse;
+import com.wells.bill.assistant.model.BillSummary;
 import com.wells.bill.assistant.model.BillUpdateRequest;
 import com.wells.bill.assistant.service.BillService;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +36,7 @@ public class BillController {
     // Get Bill by ID
     // -----------------------------
     @GetMapping("/{billId}")
-    public ResponseEntity<BillCreateResponse> getBill(@PathVariable UUID billId) {
+    public ResponseEntity<BillSummary> getBill(@PathVariable UUID billId) {
         return ResponseEntity.ok(billService.getBill(billId));
     }
 
@@ -43,7 +44,7 @@ public class BillController {
     // List Bills by Status
     // -----------------------------
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<BillCreateResponse>> listByStatus(@PathVariable String status) {
+    public ResponseEntity<List<BillSummary>> listByStatus(@PathVariable String status) {
         BillStatus billStatus = BillStatus.valueOf(status.toUpperCase());
         return ResponseEntity.ok(billService.listByStatus(billStatus));
     }
@@ -60,7 +61,7 @@ public class BillController {
     // List Upcoming Unpaid Bills (Next 7 Days)
     // -----------------------------
     @GetMapping("/upcoming")
-    public ResponseEntity<List<BillCreateResponse>> upcoming() {
+    public ResponseEntity<List<BillSummary>> upcoming() {
         LocalDate now = LocalDate.now();
         return ResponseEntity.ok(billService.findUpcomingUnpaidBills(now, now.plusDays(7)));
     }
@@ -69,7 +70,7 @@ public class BillController {
     // List All Unpaid Bills
     // -----------------------------
     @GetMapping("/unpaid")
-    public ResponseEntity<List<BillCreateResponse>> unpaid() {
+    public ResponseEntity<List<BillSummary>> unpaid() {
         return ResponseEntity.ok(billService.findAllUnpaid());
     }
 

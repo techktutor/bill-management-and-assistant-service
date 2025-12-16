@@ -1,7 +1,7 @@
 package com.wells.bill.assistant.tools;
 
 import com.wells.bill.assistant.entity.BillStatus;
-import com.wells.bill.assistant.model.BillCreateResponse;
+import com.wells.bill.assistant.model.BillSummary;
 import com.wells.bill.assistant.model.PaymentIntentRequest;
 import com.wells.bill.assistant.model.PaymentIntentResponse;
 import com.wells.bill.assistant.service.BillService;
@@ -42,7 +42,7 @@ public class PaymentAssistantTool {
             UUID merchantUUID = UUID.fromString(merchantId);
             UUID customerUUID = UUID.fromString(customerId);
 
-            BillCreateResponse bill = billService.getBill(billUUID);
+            BillSummary bill = billService.getBill(billUUID);
 
             if (bill.getStatus() != BillStatus.PAYMENT_READY) {
                 return "Bill is not ready for payment.";
@@ -96,7 +96,7 @@ public class PaymentAssistantTool {
                 return "Scheduled date must be in the future.";
             }
 
-            BillCreateResponse bill = billService.getBill(billUUID);
+            BillSummary bill = billService.getBill(billUUID);
             if (bill.getStatus() != BillStatus.PAYMENT_READY) {
                 return "Bill is not ready for scheduled payment.";
             }

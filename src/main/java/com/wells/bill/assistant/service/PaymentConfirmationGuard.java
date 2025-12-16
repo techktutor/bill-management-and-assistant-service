@@ -1,5 +1,7 @@
 package com.wells.bill.assistant.service;
 
+import com.wells.bill.assistant.store.ConversationStateStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -32,7 +34,7 @@ public class PaymentConfirmationGuard {
 
     private final ConversationStateStore stateStore;
 
-    public PaymentConfirmationGuard(ConversationStateStore stateStore) {
+    public PaymentConfirmationGuard(@Qualifier("inMemoryConversationStateStore") ConversationStateStore stateStore) {
         this.stateStore = stateStore;
     }
 

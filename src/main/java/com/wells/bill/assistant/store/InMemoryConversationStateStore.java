@@ -1,5 +1,6 @@
-package com.wells.bill.assistant.service;
+package com.wells.bill.assistant.store;
 
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -7,7 +8,8 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Component
+@Primary
+@Component("inMemoryConversationStateStore")
 public class InMemoryConversationStateStore implements ConversationStateStore {
 
     private static class Entry {

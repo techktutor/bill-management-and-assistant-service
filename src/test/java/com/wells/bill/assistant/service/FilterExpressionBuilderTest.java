@@ -1,5 +1,6 @@
 package com.wells.bill.assistant.service;
 
+import com.wells.bill.assistant.builder.FilterExpressionBuilder;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

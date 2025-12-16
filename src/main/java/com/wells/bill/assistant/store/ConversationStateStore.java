@@ -1,4 +1,4 @@
-package com.wells.bill.assistant.service;
+package com.wells.bill.assistant.store;
 
 import java.time.Duration;
 

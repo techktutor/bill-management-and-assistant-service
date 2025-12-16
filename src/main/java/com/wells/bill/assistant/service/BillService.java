@@ -5,6 +5,7 @@ import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.BillStatus;
 import com.wells.bill.assistant.model.BillCreateRequest;
 import com.wells.bill.assistant.model.BillCreateResponse;
+import com.wells.bill.assistant.model.BillSummary;
 import com.wells.bill.assistant.model.BillUpdateRequest;
 import com.wells.bill.assistant.repository.BillRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,9 +35,11 @@ public class BillService {
         if (req.getCustomerId() == null) {
             throw new IllegalArgumentException("customerId is required");
         }
+
         if (req.getName() == null || req.getName().isBlank()) {
             throw new IllegalArgumentException("name is required");
         }
+
         BillEntity bill = new BillEntity();
         bill.setCustomerId(req.getCustomerId());
         bill.setName(req.getName());
@@ -53,21 +56,11 @@ public class BillService {
         return toResponse(saved);
     }
 
-    public BillCreateResponse getBill(UUID id) {
-        return toResponse(getBillEntity(id));
-    }
-
-    @Transactional(readOnly = true)
-    public BillEntity getBillEntity(UUID id) {
-        return billRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Bill not found: " + id));
-    }
-
-    @Transactional(readOnly = true)
-    public List<BillCreateResponse> listByStatus(BillStatus status) {
-        return billRepository.findByStatus(status).stream()
-                .map(this::toResponse)
-                .toList();
+    public BillCreateResponse createBill(UUID customerId, String originalFilename) {
+        BillCreateRequest req = new BillCreateRequest();
+        req.setCustomerId(customerId);
+        req.setName(originalFilename);
+        return createBill(req);
     }
 
     /**
@@ -105,13 +98,75 @@ public class BillService {
      */
     public void updateOverdue() {
         LocalDate today = LocalDate.now();
-        List<BillEntity> overdueBills =
-                billRepository.findByStatusAndDueDateBefore(BillStatus.PENDING, today);
+        List<BillEntity> overdueBills = billRepository.findByStatusAndDueDateBefore(BillStatus.PENDING, today);
 
         overdueBills.forEach(bill -> {
             bill.setStatus(BillStatus.OVERDUE);
             log.warn("Bill {} marked OVERDUE", bill.getId());
         });
+    }
+
+    @Transactional(readOnly = true)
+    public BillSummary getBill(UUID id) {
+        return toSummary(getBillEntity(id));
+    }
+
+    @Transactional(readOnly = true)
+    public BillEntity getBillEntity(UUID id) {
+        return billRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Bill not found: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<BillSummary> listByStatus(BillStatus status) {
+        return billRepository.findByStatus(status)
+                .stream()
+                .map(this::toSummary)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BillSummary> findAllUnpaid() {
+        return billRepository
+                .findByStatusIn(List.of(BillStatus.PENDING, BillStatus.OVERDUE))
+                .stream()
+                .map(this::toSummary)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BillSummary> findByDueDateRange(LocalDate start, LocalDate end) {
+        return billRepository
+                .findByDueDateBetween(start, end)
+                .stream()
+                .map(this::toSummary)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BillSummary> findUnpaidByDueDateRange(LocalDate start, LocalDate end) {
+        return billRepository
+                .findByDueDateBetweenAndStatusIn(
+                        start,
+                        end,
+                        List.of(BillStatus.PENDING, BillStatus.OVERDUE)
+                )
+                .stream()
+                .map(this::toSummary)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BillSummary> findUpcomingUnpaidBills(LocalDate start, LocalDate end) {
+        return billRepository
+                .findByDueDateBetweenAndStatusIn(
+                        start,
+                        end,
+                        List.of(BillStatus.PENDING, BillStatus.OVERDUE)
+                )
+                .stream()
+                .map(this::toSummary)
+                .toList();
     }
 
     private BillCreateResponse toResponse(BillEntity bill) {
@@ -120,52 +175,7 @@ public class BillService {
         return response;
     }
 
-    public BillCreateResponse createBill(UUID customerId, String originalFilename) {
-        BillCreateRequest req = new BillCreateRequest();
-        req.setCustomerId(customerId);
-        req.setName(originalFilename);
-        return createBill(req);
+    private BillSummary toSummary(BillEntity bill) {
+        return BillSummary.from(bill);
     }
-
-    // -----------------------------
-    // READ-ONLY QUERY METHODS
-    // -----------------------------
-    @Transactional(readOnly = true)
-    public List<BillCreateResponse> findAllUnpaid() {
-        return billRepository
-                .findByStatusIn(List.of(BillStatus.PENDING, BillStatus.OVERDUE))
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<BillCreateResponse> findByDueDateRange(LocalDate start, LocalDate end) {
-        return billRepository
-                .findByDueDateBetween(start, end)
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<BillCreateResponse> findUnpaidByDueDateRange(LocalDate start, LocalDate end) {
-        return billRepository
-                .findByDueDateBetweenAndStatusIn(
-                        start,
-                        end,
-                        List.of(BillStatus.PENDING, BillStatus.OVERDUE)
-                )
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<BillCreateResponse> findUpcomingUnpaidBills(LocalDate start, LocalDate end) {
-        return billRepository.findByDueDateBetweenAndStatusIn(start, end, List.of(BillStatus.PENDING, BillStatus.OVERDUE)).stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
 }
