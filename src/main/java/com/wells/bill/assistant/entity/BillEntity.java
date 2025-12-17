@@ -33,7 +33,19 @@ public class BillEntity {
     private UUID customerId;
 
     @Column(nullable = false, length = 200)
-    private String name;
+    private String consumerName;
+
+    @Column(nullable = false, length = 200)
+    private String consumerNumber;
+
+    @Column(nullable = false, length = 200)
+    private String fileName;
+
+    @Column(length = 200)
+    private String vendor;
+
+    @Enumerated(EnumType.STRING)
+    private BillCategory category;
 
     @Column(nullable = false, precision = 14, scale = 2)
     private BigDecimal amount;
@@ -47,12 +59,6 @@ public class BillEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private BillStatus status;
-
-    @Column(length = 200)
-    private String vendor;
-
-    @Enumerated(EnumType.STRING)
-    private BillCategory category;
 
     // ===== Ingestion / AI =====
     @Column(name = "ingested_at")

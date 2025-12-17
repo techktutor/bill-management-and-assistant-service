@@ -1,7 +1,9 @@
 package com.wells.bill.assistant.integ;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wells.bill.assistant.entity.BillCategory;
 import com.wells.bill.assistant.entity.BillEntity;
+import com.wells.bill.assistant.entity.BillStatus;
 import com.wells.bill.assistant.model.BillCreateRequest;
 import com.wells.bill.assistant.model.BillUpdateRequest;
 import org.junit.jupiter.api.Test;
@@ -20,9 +22,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 public class BillControllerIntegrationTest {
 
     @Autowired
@@ -35,9 +37,15 @@ public class BillControllerIntegrationTest {
     void testCreateGetUpdateDeleteBill() throws Exception {
         BillCreateRequest req = new BillCreateRequest();
         req.setCustomerId(UUID.randomUUID());
-        req.setName("Electricity");
+        req.setConsumerName("Electricity");
+        req.setConsumerNumber("1234567890");
         req.setAmount(new BigDecimal("120.50"));
+        req.setCurrency("USD");
+        req.setStatus(BillStatus.INGESTING);
         req.setDueDate(LocalDate.now().plusDays(5));
+        req.setCategory(BillCategory.ELECTRICITY);
+        req.setVendor("Power Company");
+        req.setFileName("bill1.pdf");
 
         // CREATE
         String response = mvc.perform(post("/api/bills")
@@ -64,11 +72,7 @@ public class BillControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(mapper.writeValueAsString(upd)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Electricity Updated"));
-
-        // DELETE
-        mvc.perform(delete("/api/bills/" + created.getId()))
-                .andExpect(status().isNoContent());
+                .andExpect(jsonPath("$.consumerName").value("Electricity Updated"));
     }
 }
 

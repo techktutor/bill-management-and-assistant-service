@@ -16,7 +16,7 @@ class FilterExpressionBuilderTest {
                 .eq("vendor", "ACME")
                 .build();
 
-        assertEquals("vendor = 'ACME'", expr);
+        assertEquals("vendor == 'ACME'", expr);
     }
 
     @Test
@@ -26,7 +26,7 @@ class FilterExpressionBuilderTest {
                 .in("vendor", List.of("ACME", "OTHER"))
                 .build();
 
-        assertEquals("vendor IN ('ACME', 'OTHER')", expr);
+        assertEquals("vendor in ['ACME', 'OTHER']", expr);
     }
 
     @Test
@@ -47,6 +47,6 @@ class FilterExpressionBuilderTest {
                                 .lte("amount", 500))
                 .build();
 
-        assertEquals("(vendor = 'ACME' OR vendor = 'OTHER') (amount >= 100 AND amount <= 500)", expr);
+        assertEquals("(vendor == 'ACME' || vendor == 'OTHER') && (amount >= 100 && amount <= 500)", expr);
     }
 }

@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class AssistantOrchestratorService {
+public class OrchestratorService {
 
     private static final String DEFAULT_RESPONSE =
             "I apologize, but I encountered an error processing your request. Please try again.";
@@ -72,7 +72,12 @@ public class AssistantOrchestratorService {
             if (!guard.paymentIntent()) {
                 UUID billId = extractBillId(userMessage);
                 if (billId != null) {
-                    RagEngineService.RagAnswer ragAnswer = ragEngineService.answerBillQuestion(billId.toString(), userMessage);
+                    RagEngineService.RagAnswer ragAnswer =
+                            ragEngineService.answerBillQuestion(
+                                    conversationId,
+                                    billId.toString(),
+                                    userMessage
+                            );
 
                     // 🔒 Hard block — unsafe or ungrounded
                     if (!ragAnswer.grounded()) {

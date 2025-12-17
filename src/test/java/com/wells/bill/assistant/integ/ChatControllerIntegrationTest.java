@@ -2,9 +2,8 @@ package com.wells.bill.assistant.integ;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wells.bill.assistant.model.ChatRequest;
-import com.wells.bill.assistant.service.AssistantOrchestratorService;
+import com.wells.bill.assistant.service.OrchestratorService;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -34,15 +33,15 @@ public class ChatControllerIntegrationTest {
     private ObjectMapper mapper;
 
     @Autowired
-    private AssistantOrchestratorService orchestrator; // mock injected here
+    private OrchestratorService orchestrator; // mock injected here
 
     @TestConfiguration
     static class MockConfig {
 
         @Bean
         @Primary // override real bean
-        public AssistantOrchestratorService mockOrchestrator() {
-            return mock(AssistantOrchestratorService.class);
+        public OrchestratorService mockOrchestrator() {
+            return mock(OrchestratorService.class);
         }
     }
 

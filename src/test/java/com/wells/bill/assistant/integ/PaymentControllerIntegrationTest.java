@@ -58,12 +58,24 @@ public class PaymentControllerIntegrationTest {
     // -----------------------------------------------------------
     @Test
     void testCreatePaymentIntent() throws Exception {
+        BillEntity bill = new BillEntity();
+        bill.setCustomerId(UUID.randomUUID());
+        bill.setConsumerName("Test Bill");
+        bill.setConsumerNumber("123456");
+        bill.setFileName("test_bill.pdf");
+        bill.setAmount(new BigDecimal("20.00"));
+        bill.setCurrency("USD");
+        bill.setStatus(BillStatus.PAYMENT_READY);
+        bill.setDueDate(LocalDate.now().plusDays(1));
+        UUID id = billRepository.save(bill).getId();
+
         PaymentIntentRequest req = new PaymentIntentRequest();
-        req.setCustomerId(customerId);
-        req.setBillId(billId);
+        req.setCustomerId(bill.getCustomerId());
+        req.setBillId(id);
         req.setMerchantId(UUID.randomUUID());
-        req.setAmount(new BigDecimal("49.99"));
+        req.setAmount(bill.getAmount());
         req.setCurrency("USD");
+        req.setApprovalSource("unit-test");
 
         mockMvc.perform(post("/api/payments/intent")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -80,9 +92,12 @@ public class PaymentControllerIntegrationTest {
     void testExecutePayment() throws Exception {
         BillEntity bill = new BillEntity();
         bill.setCustomerId(UUID.randomUUID());
-        bill.setName("Test Bill");
+        bill.setConsumerName("Test Bill");
+        bill.setConsumerNumber("123456");
+        bill.setFileName("test_bill.pdf");
         bill.setAmount(new BigDecimal("20.00"));
-        bill.setStatus(BillStatus.PENDING);
+        bill.setCurrency("USD");
+        bill.setStatus(BillStatus.PAYMENT_READY);
         bill.setDueDate(LocalDate.now().plusDays(1));
         UUID id = billRepository.save(bill).getId();
 
@@ -93,6 +108,7 @@ public class PaymentControllerIntegrationTest {
         req.setMerchantId(UUID.randomUUID());
         req.setAmount(BigDecimal.valueOf(20.00));
         req.setCurrency("USD");
+        req.setApprovalSource("unit-test");
 
         String response = mockMvc.perform(post("/api/payments/intent")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -104,6 +120,8 @@ public class PaymentControllerIntegrationTest {
 
         ExecutePaymentRequest execReq = new ExecutePaymentRequest();
         execReq.setGatewayIdempotencyKey("idem-exec-001");
+        execReq.setExecutedBy("unit-test");
+        execReq.setCardToken("tok_test_visa_1234");
 
         mockMvc.perform(post("/api/payments/" + paymentId + "/execute")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -117,13 +135,25 @@ public class PaymentControllerIntegrationTest {
     // -----------------------------------------------------------
     @Test
     void testSchedulePayment() throws Exception {
+        BillEntity bill = new BillEntity();
+        bill.setCustomerId(UUID.randomUUID());
+        bill.setConsumerName("Test Bill");
+        bill.setConsumerNumber("123456");
+        bill.setFileName("test_bill.pdf");
+        bill.setAmount(new BigDecimal("20.00"));
+        bill.setCurrency("USD");
+        bill.setStatus(BillStatus.PAYMENT_READY);
+        bill.setDueDate(LocalDate.now().plusDays(1));
+        UUID id = billRepository.save(bill).getId();
+
         PaymentIntentRequest req = new PaymentIntentRequest();
         req.setCustomerId(customerId);
-        req.setBillId(billId);
+        req.setBillId(id);
         req.setMerchantId(UUID.randomUUID());
         req.setAmount(BigDecimal.valueOf(15.50));
         req.setCurrency("USD");
         req.setScheduledDate(LocalDate.now().plusDays(3));
+        req.setApprovalSource("unit-test-schedule");
 
         mockMvc.perform(post("/api/payments/schedule")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -148,6 +178,7 @@ public class PaymentControllerIntegrationTest {
         scheduled.setPaymentType(com.wells.bill.assistant.entity.PaymentType.SCHEDULED);
         scheduled.setScheduledDate(LocalDate.now().plusDays(5));
         scheduled.setPaymentId("pay_test_cancel");
+        scheduled.setApprovalSource("test_source");
         paymentRepository.save(scheduled);
 
         mockMvc.perform(post("/api/payments/pay_test_cancel/cancel"))
@@ -171,6 +202,7 @@ public class PaymentControllerIntegrationTest {
         p.setCurrency("USD");
         p.setStatus(com.wells.bill.assistant.entity.PaymentStatus.CREATED);
         p.setPaymentType(com.wells.bill.assistant.entity.PaymentType.IMMEDIATE);
+        p.setApprovalSource("test_source");
         paymentRepository.save(p);
 
         mockMvc.perform(get("/api/payments/pay_lookup_001"))

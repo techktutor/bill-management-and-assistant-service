@@ -5,7 +5,7 @@ package com.wells.bill.assistant.controller;
 
 import com.wells.bill.assistant.model.ChatRequest;
 import com.wells.bill.assistant.model.ChatResponse;
-import com.wells.bill.assistant.service.AssistantOrchestratorService;
+import com.wells.bill.assistant.service.OrchestratorService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -22,7 +22,7 @@ public class ChatController {
 
     private static final Logger log = LoggerFactory.getLogger(ChatController.class);
 
-    private final AssistantOrchestratorService orchestrator;
+    private final OrchestratorService orchestrator;
 
     @PostMapping
     public ResponseEntity<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {

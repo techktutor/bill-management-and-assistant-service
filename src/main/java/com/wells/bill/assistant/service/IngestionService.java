@@ -91,7 +91,6 @@ public class IngestionService {
 
             log.info("Successfully ingested bill {} into {} chunks", billId, chunks.size());
             return chunks.size();
-
         } catch (Exception e) {
             bill.setStatus(BillStatus.FAILED);
             log.error("ETL ingestion failed for bill {}: {}", billId, e.getMessage(), e);
@@ -99,4 +98,3 @@ public class IngestionService {
         }
     }
 }
-

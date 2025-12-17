@@ -18,7 +18,7 @@ public class BillCreateResponse {
 
     private UUID customerId;
 
-    private String name;
+    private String consumerName;
 
     private BigDecimal amount;
 

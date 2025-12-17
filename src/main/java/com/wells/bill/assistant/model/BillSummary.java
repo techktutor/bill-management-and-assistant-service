@@ -33,7 +33,7 @@ public class BillSummary {
 
         return BillSummary.builder()
                 .id(bill.getId())
-                .name(bill.getName())
+                .name(bill.getConsumerName())
                 .vendor(bill.getVendor())
                 .amount(bill.getAmount())
                 .currency(

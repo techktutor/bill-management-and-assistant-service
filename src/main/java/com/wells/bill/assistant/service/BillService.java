@@ -3,10 +3,7 @@ package com.wells.bill.assistant.service;
 import com.wells.bill.assistant.entity.BillCategory;
 import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.BillStatus;
-import com.wells.bill.assistant.model.BillCreateRequest;
-import com.wells.bill.assistant.model.BillCreateResponse;
-import com.wells.bill.assistant.model.BillSummary;
-import com.wells.bill.assistant.model.BillUpdateRequest;
+import com.wells.bill.assistant.model.*;
 import com.wells.bill.assistant.repository.BillRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,30 +33,44 @@ public class BillService {
             throw new IllegalArgumentException("customerId is required");
         }
 
-        if (req.getName() == null || req.getName().isBlank()) {
+        if (req.getConsumerName() == null || req.getConsumerName().isBlank()) {
             throw new IllegalArgumentException("name is required");
         }
 
+        BillEntity bill = getBillEntity(req);
+
+        BillEntity saved = billRepository.save(bill);
+
+        log.info("Bill created: id={} name={}", saved.getId(), saved.getConsumerName());
+        return toResponse(saved);
+    }
+
+    private static BillEntity getBillEntity(BillCreateRequest req) {
         BillEntity bill = new BillEntity();
         bill.setCustomerId(req.getCustomerId());
-        bill.setName(req.getName());
+        bill.setConsumerName(req.getConsumerName());
+        bill.setConsumerNumber(req.getConsumerNumber());
+        bill.setFileName(req.getFileName());
         bill.setAmount(req.getAmount());
+        bill.setCurrency(req.getCurrency());
+        bill.setStatus(req.getStatus());
         bill.setDueDate(req.getDueDate());
         bill.setVendor(req.getVendor());
         bill.setCategory(req.getCategory() == null ? BillCategory.OTHER : req.getCategory());
         bill.setAutoPayEnabled(Boolean.TRUE.equals(req.getAutoPayEnabled()));
         bill.setStatus(BillStatus.UPLOADED);
-
-        BillEntity saved = billRepository.save(bill);
-
-        log.info("Bill created: id={} name={}", saved.getId(), saved.getName());
-        return toResponse(saved);
+        return bill;
     }
 
-    public BillCreateResponse createBill(UUID customerId, String originalFilename) {
+    public BillCreateResponse createBill(BillDetails billDetails) {
         BillCreateRequest req = new BillCreateRequest();
-        req.setCustomerId(customerId);
-        req.setName(originalFilename);
+        req.setCustomerId(UUID.randomUUID());
+        req.setConsumerName(billDetails.getConsumerName());
+        req.setConsumerNumber(billDetails.getConsumerNumber());
+        req.setFileName(billDetails.getFileName());
+        req.setAmount(billDetails.getAmount());
+        req.setCurrency("INR");
+        req.setDueDate(billDetails.getDueDate());
         return createBill(req);
     }
 
@@ -69,9 +80,15 @@ public class BillService {
     @Transactional
     public BillCreateResponse updateBill(UUID id, BillUpdateRequest updates) {
         BillEntity bill = getBillEntity(id);
-        if (updates.getName() != null) bill.setName(updates.getName());
-        if (updates.getVendor() != null) bill.setVendor(updates.getVendor());
-        if (updates.getCategory() != null) bill.setCategory(updates.getCategory());
+        if (updates.getName() != null) {
+            bill.setConsumerName(updates.getName());
+        }
+        if (updates.getVendor() != null) {
+            bill.setVendor(updates.getVendor());
+        }
+        if (updates.getCategory() != null) {
+            bill.setCategory(updates.getCategory());
+        }
 
         log.info("Bill updated: id={}", bill.getId());
         return toResponse(bill);

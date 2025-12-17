@@ -27,4 +27,5 @@ public class PaymentIntentRequest {
     private LocalDate scheduledDate;
 
     private PaymentType paymentType;
+    private String approvalSource;
 }

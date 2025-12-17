@@ -1,5 +1,7 @@
 package com.wells.bill.assistant.integ;
 
+import com.wells.bill.assistant.model.BillDetails;
+import com.wells.bill.assistant.service.BillTextExtractionService;
 import com.wells.bill.assistant.service.IngestionService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -15,24 +17,30 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ActiveProfiles("test")
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 public class IngestControllerIntegrationTest {
 
     @Autowired
-    private MockMvc mvc;
+    MockMvc mvc;
 
     @Autowired
-    private IngestionService ingestionService;
+    IngestionService mockIngestionService;
+
+    @Autowired
+    BillTextExtractionService mockBillTextExtractionService;
 
     @TestConfiguration
     static class MockConfig {
@@ -42,21 +50,81 @@ public class IngestControllerIntegrationTest {
         public IngestionService mockIngestionService() {
             return mock(IngestionService.class);
         }
+
+        @Bean
+        @Primary
+        public BillTextExtractionService mockBillTextExtractionService() {
+            return mock(BillTextExtractionService.class);
+        }
     }
 
     @Test
     void ingestFile_success() throws Exception {
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "test.pdf", MediaType.APPLICATION_PDF_VALUE, "dummy-content".getBytes()
-        );
+        MockMultipartFile file = getMockMultipartFile();
 
-        Mockito.when(ingestionService.ingestFile(any(UUID.class), any(MultipartFile.class))).thenReturn(4);
+        String normalizedText = """
+                STATE ELECTRICITY DISTRIBUTION COMPANY LTD Electricity Bill (Tax Invoice) Consumer Name : Ramesh Kumar Consumer Number : 12345678901 Service Connection : Domestic Billing Period : 01-Aug-2025 to 31-Aug-2025 Meter Number : DL123456 Previous Reading : 2548.00 Current Reading : 2675.00 Units Consumed : 127 kWh Energy Charges : Rs. 635.00 Fixed Charges : Rs. 120.00 Electricity Duty : Rs. 45.00 Fuel Adjustment : Rs. 18.50 Late Payment Surcharge (if any) : Rs. 25.00 ----------------------------------------- Total Amount Due : ₹ 818.50 ----------------------------------------- Bill Issue Date : 05-Aug-2025 Due Date : 20-Aug-2025 Last Due Date : 25-Aug-2025 After Due Date, a Late Payment Surcharge will be applicable as per tariff order. Customer Care: Toll Free No : 1912 Website : www.statepower.in This is a computer generated bill.
+                """;
+        Mockito.when(mockBillTextExtractionService.extractText(any(MultipartFile.class))).thenReturn(normalizedText);
+
+        BillDetails details = new BillDetails();
+        details.setAmount(new BigDecimal("818.50")); // Simulate missing amount to trigger LLM extraction
+        details.setDueDate(LocalDate.now()); // Simulate missing due date to trigger LLM extraction
+        details.setConsumerName("Ramesh Kumar");
+        details.setConsumerNumber("12345678901");
+        Mockito.when(mockBillTextExtractionService.extractUsingLLM(anyString())).thenReturn(details);
+
+        Mockito.when(mockIngestionService.ingestFile(any(UUID.class), any(MultipartFile.class))).thenReturn(4);
 
         mvc.perform(multipart("/api/ingest/file").file(file))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.chunks").value(4))
                 .andExpect(jsonPath("$.filename").value("test.pdf"));
+    }
+
+    private static MockMultipartFile getMockMultipartFile() {
+        String content = """
+                                       STATE ELECTRICITY DISTRIBUTION COMPANY LTD
+                                       Electricity Bill (Tax Invoice)
+                
+                                       Consumer Name       : Ramesh Kumar
+                                       Consumer Number     : 12345678901
+                                       Service Connection  : Domestic
+                                       Billing Period      : 01-Aug-2025 to 31-Aug-2025
+                
+                                       Meter Number        : DL123456
+                                       Previous Reading    : 2548.00
+                                       Current Reading     : 2675.00
+                                       Units Consumed      : 127 kWh
+                
+                                       Energy Charges      : Rs. 635.00
+                                       Fixed Charges       : Rs. 120.00
+                                       Electricity Duty    : Rs. 45.00
+                                       Fuel Adjustment     : Rs. 18.50
+                                       Late Payment Surcharge (if any) : Rs. 25.00
+                
+                                       -----------------------------------------
+                                       Total Amount Due    : ₹ 818.50
+                                       -----------------------------------------
+                
+                                       Bill Issue Date     : 05-Aug-2025
+                                       Due Date            : 20-Aug-2025
+                                       Last Due Date       : 25-Aug-2025
+                
+                                       After Due Date, a Late Payment Surcharge
+                                       will be applicable as per tariff order.
+                
+                                       Customer Care:
+                                       Toll Free No        : 1912
+                                       Website             : www.statepower.in
+                
+                                       This is a computer generated bill.
+                """;
+
+        return new MockMultipartFile(
+                "file", "test.pdf", MediaType.APPLICATION_PDF_VALUE, content.getBytes()
+        );
     }
 
     @Test

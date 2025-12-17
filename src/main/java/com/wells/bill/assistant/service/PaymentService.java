@@ -69,6 +69,7 @@ public class PaymentService {
         payment.setCurrency(req.getCurrency() == null ? bill.getCurrency() : req.getCurrency());
         payment.setIdempotencyKey(req.getIdempotencyKey());
         payment.setPaymentType(req.getPaymentType() == null ? PaymentType.IMMEDIATE : req.getPaymentType());
+        payment.setApprovalSource(req.getApprovalSource());
 
         if (payment.getPaymentType() == PaymentType.SCHEDULED) {
             payment.setScheduledDate(req.getScheduledDate());
@@ -137,6 +138,7 @@ public class PaymentService {
         payment.setPaymentType(PaymentType.SCHEDULED);
         payment.setScheduledDate(scheduledDate);
         payment.setStatus(PaymentStatus.SCHEDULED);
+        payment.setApprovalSource(req.getApprovalSource());
 
         PaymentEntity saved = paymentRepository.save(payment);
         log.info("Scheduled payment created: {} scheduledDate={}", saved.getPaymentId(), scheduledDate);

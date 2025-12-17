@@ -1,6 +1,7 @@
 package com.wells.bill.assistant.service;
 
 import com.wells.bill.assistant.builder.FilterExpressionBuilder;
+import com.wells.bill.assistant.store.RagAnswerCache;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.*;
 
 @Service
@@ -23,6 +25,7 @@ public class RagEngineService {
     private final VectorStore vectorStore;
     private final ChatClient chatClient;
     private final MeterRegistry meterRegistry;
+    private final RagAnswerCache ragAnswerCache;
 
     private static final int TOP_K = 12;
     private static final int HYBRID_FETCH_MULTIPLIER = 4;
@@ -35,15 +38,17 @@ public class RagEngineService {
     private static final double WARN_THRESHOLD = 0.65;
     private static final double MIN_LEXICAL_GROUNDING = 0.20;
 
+    private static final Duration CACHE_TTL = Duration.ofMinutes(5);
+
     // ============================================================
     // PUBLIC ENTRY — Bill-scoped RAG (single authoritative entry)
     // ============================================================
-    public RagAnswer answerBillQuestion(String billId, String question) {
+    public RagAnswer answerBillQuestion(String conversationId, String billId, String question) {
         meterRegistry.counter("rag.requests.total").increment();
         meterRegistry.counter("rag.requests.bill").increment();
 
         Timer.Sample totalTimer = Timer.start(meterRegistry);
-
+        String normalizedQuestion = normalizeQuestion(question);
         try {
             if (billId == null || billId.isBlank()) {
                 return RagAnswer.blocked("Bill ID is required to answer this question.");
@@ -52,6 +57,19 @@ public class RagEngineService {
             if (question == null || question.isBlank()) {
                 return RagAnswer.blocked("Please ask a question about the bill.");
             }
+
+            // =====================================================
+            // ✅ CACHE LOOKUP
+            // =====================================================
+            //Optional<RagAnswer> cached = ragAnswerCache.get(conversationId, billId, normalizedQuestion);
+            Optional<RagAnswer> cached = Optional.ofNullable(ragAnswerCache.get(conversationId, billId, normalizedQuestion))
+                    .orElse(Optional.empty());
+
+            if (cached.isPresent()) {
+                meterRegistry.counter("rag.cache.hit").increment();
+                return cached.get();
+            }
+            meterRegistry.counter("rag.cache.miss").increment();
 
             List<Document> chunks = retrieveBillChunksHybrid(billId, question);
             meterRegistry.summary("rag.retrieval.chunks").record(chunks.size());
@@ -72,28 +90,36 @@ public class RagEngineService {
 
             meterRegistry.summary("rag.answer.confidence").record(evaluated.confidence());
 
-            // -------------------------
-            // Step 7 — Enforcement
-            // -------------------------
+            RagAnswer finalAnswer;
+
             if (evaluated.confidence() < BLOCK_THRESHOLD) {
                 meterRegistry.counter("rag.answer.blocked").increment();
-                return RagAnswer.blocked(
+                finalAnswer = RagAnswer.blocked(
                         "I don’t have enough reliable information from the retrieved bills to answer that."
                 );
-            }
-
-            if (evaluated.confidence() < WARN_THRESHOLD) {
+            } else if (evaluated.confidence() < WARN_THRESHOLD) {
                 meterRegistry.counter("rag.answer.warned").increment();
-                return RagAnswer.warned(
+                finalAnswer = RagAnswer.warned(
                         "⚠️ This answer may be incomplete.\n\n" + evaluated.answer(),
                         evaluated.confidence(),
                         evaluated.chunksUsed()
                 );
+            } else {
+                meterRegistry.counter("rag.answer.accepted").increment();
+                finalAnswer = evaluated;
             }
 
-            meterRegistry.counter("rag.answer.accepted").increment();
-            return evaluated;
-
+            // =====================================================
+            // ✅ CACHE STORE (never null now)
+            // =====================================================
+            ragAnswerCache.put(
+                    conversationId,
+                    billId,
+                    normalizedQuestion,
+                    finalAnswer,
+                    CACHE_TTL
+            );
+            return Objects.requireNonNull(finalAnswer, "RagAnswer must never be null");
         } finally {
             totalTimer.stop(meterRegistry.timer("rag.latency.total"));
         }
@@ -304,5 +330,14 @@ public class RagEngineService {
         static RagAnswer warned(String msg, double confidence, int chunks) {
             return new RagAnswer(msg, confidence, true, chunks);
         }
+    }
+
+    public static String normalizeQuestion(String q) {
+        return q == null ? "" :
+                q.toLowerCase()
+                        .replaceAll("[^a-z0-9 ]", "")
+                        .replaceAll("\\s+", " ")
+                        .replaceAll("[?!.]+$", "")
+                        .trim();
     }
 }

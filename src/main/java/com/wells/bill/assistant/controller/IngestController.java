@@ -1,10 +1,10 @@
-// ============================
-// Optimized IngestController
-// ============================
 package com.wells.bill.assistant.controller;
 
 import com.wells.bill.assistant.model.BillCreateResponse;
+import com.wells.bill.assistant.model.BillDetails;
+import com.wells.bill.assistant.service.BillParser;
 import com.wells.bill.assistant.service.BillService;
+import com.wells.bill.assistant.service.BillTextExtractionService;
 import com.wells.bill.assistant.service.IngestionService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -18,7 +18,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,12 +26,13 @@ public class IngestController {
 
     private static final Logger log = LoggerFactory.getLogger(IngestController.class);
 
+    private final BillParser billParser;
     private final BillService billService;
     private final IngestionService etlService;
+    private final BillTextExtractionService billTextExtractionService;
 
     @PostMapping(value = "/file", consumes = "multipart/form-data")
-    public ResponseEntity<?> ingest(@RequestParam("file") MultipartFile file, @RequestParam UUID customerId) {
-
+    public ResponseEntity<?> ingest(@RequestParam("file") MultipartFile file) throws Exception {
         log.info("Ingest request received: {}", file.getOriginalFilename());
 
         if (file.isEmpty()) {
@@ -42,11 +42,17 @@ public class IngestController {
             ));
         }
 
-        BillCreateResponse bill = billService.createBill(
-                customerId,
-                file.getOriginalFilename()
-        );
-        // Exceptions handled by GlobalExceptionHandler
+        String normalizedText = billTextExtractionService.extractText(file);
+
+        BillDetails details = billParser.parse(normalizedText);
+
+        if (details.getAmount() == null || details.getDueDate() == null) {
+            details = billTextExtractionService.extractUsingLLM(normalizedText);
+        }
+        details.setFileName(file.getOriginalFilename());
+
+        BillCreateResponse bill = billService.createBill(details);
+
         int chunks = etlService.ingestFile(bill.getId(), file);
 
         return ResponseEntity.ok(Map.of(
