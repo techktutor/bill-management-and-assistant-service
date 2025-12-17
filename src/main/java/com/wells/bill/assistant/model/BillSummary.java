@@ -4,25 +4,14 @@ import com.wells.bill.assistant.entity.BillCategory;
 import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.BillStatus;
 import lombok.Builder;
-import lombok.Value;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
-@Value
 @Builder
-public class BillSummary {
-    UUID id;
-    String name;
-    String vendor;
-    BigDecimal amount;
-    String currency;
-    LocalDate dueDate;
-    BillStatus status;
-    BillCategory category;
-    Boolean autoPayEnabled;
-
+public record BillSummary(UUID id, String name, String vendor, BigDecimal amount, String currency, LocalDate dueDate,
+                          BillStatus status, BillCategory category, Boolean autoPayEnabled) {
     /**
      * Factory method from BillEntity
      */

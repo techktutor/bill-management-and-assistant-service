@@ -1,6 +1,5 @@
 package com.wells.bill.assistant.controller;
 
-import com.wells.bill.assistant.model.BillCreateResponse;
 import com.wells.bill.assistant.model.BillDetails;
 import com.wells.bill.assistant.service.BillParser;
 import com.wells.bill.assistant.service.BillService;
@@ -18,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
@@ -43,7 +43,6 @@ public class IngestController {
         }
 
         String normalizedText = billTextExtractionService.extractText(file);
-
         BillDetails details = billParser.parse(normalizedText);
 
         if (details.getAmount() == null || details.getDueDate() == null) {
@@ -51,9 +50,9 @@ public class IngestController {
         }
         details.setFileName(file.getOriginalFilename());
 
-        BillCreateResponse bill = billService.createBill(details);
+        UUID billId = billService.createBill(details);
 
-        int chunks = etlService.ingestFile(bill.getId(), file);
+        int chunks = etlService.ingestFile(billId, file);
 
         return ResponseEntity.ok(Map.of(
                 "success", true,

@@ -62,7 +62,7 @@ public class BillService {
         return bill;
     }
 
-    public BillCreateResponse createBill(BillDetails billDetails) {
+    public UUID createBill(BillDetails billDetails) {
         BillCreateRequest req = new BillCreateRequest();
         req.setCustomerId(UUID.randomUUID());
         req.setConsumerName(billDetails.getConsumerName());
@@ -71,7 +71,7 @@ public class BillService {
         req.setAmount(billDetails.getAmount());
         req.setCurrency("INR");
         req.setDueDate(billDetails.getDueDate());
-        return createBill(req);
+        return createBill(req).getId();
     }
 
     /**

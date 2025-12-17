@@ -44,7 +44,7 @@ public class PaymentAssistantTool {
 
             BillSummary bill = billService.getBill(billUUID);
 
-            if (bill.getStatus() != BillStatus.PAYMENT_READY) {
+            if (bill.status() != BillStatus.PAYMENT_READY) {
                 return "Bill is not ready for payment.";
             }
 
@@ -52,7 +52,7 @@ public class PaymentAssistantTool {
             req.setBillId(billUUID);
             req.setMerchantId(merchantUUID);
             req.setCustomerId(customerUUID);
-            req.setAmount(bill.getAmount());
+            req.setAmount(bill.amount());
             req.setCurrency(DEFAULT_CURRENCY);
 
             PaymentIntentResponse intent = paymentService.createPaymentIntent(req);
@@ -97,14 +97,14 @@ public class PaymentAssistantTool {
             }
 
             BillSummary bill = billService.getBill(billUUID);
-            if (bill.getStatus() != BillStatus.PAYMENT_READY) {
+            if (bill.status() != BillStatus.PAYMENT_READY) {
                 return "Bill is not ready for scheduled payment.";
             }
 
             PaymentIntentRequest req = new PaymentIntentRequest();
             req.setMerchantId(merchantUUID);
             req.setCustomerId(customerUUID);
-            req.setAmount(bill.getAmount());
+            req.setAmount(bill.amount());
             req.setCurrency(DEFAULT_CURRENCY);
 
             PaymentIntentResponse intent =

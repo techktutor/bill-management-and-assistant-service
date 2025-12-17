@@ -61,7 +61,7 @@ public class BillAssistantTool {
         return billService.findAllUnpaid()
                 .stream()
                 .collect(Collectors.groupingBy(
-                        b -> Optional.ofNullable(b.getVendor()).orElse("unknown")
+                        b -> Optional.ofNullable(b.vendor()).orElse("unknown")
                 ));
     }
 }
