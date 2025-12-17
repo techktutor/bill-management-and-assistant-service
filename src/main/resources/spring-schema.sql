@@ -83,5 +83,4 @@ CREATE TABLE conversation_state (
     PRIMARY KEY (conversation_id, state_key)
 );
 
-CREATE INDEX idx_conversation_state_expires
-    ON conversation_state (expires_at);
+CREATE INDEX idx_conversation_state_expires ON conversation_state (expires_at);
