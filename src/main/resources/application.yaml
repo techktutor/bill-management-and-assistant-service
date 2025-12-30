@@ -14,8 +14,12 @@ spring:
     password: bill_db_password
     driver-class-name: org.postgresql.Driver
   jpa:
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: create-drop
+  sql:
+    init:
+      mode: ALWAYS
   # ====================================================================
   # 2. SPRING AI CONFIGURATION
   # ====================================================================
