@@ -38,7 +38,7 @@ public class PaymentController {
             @RequestBody ExecutePaymentRequest req
     ) {
         req.setPaymentId(paymentId);
-        PaymentResponse paymentResponse = paymentService.executePayment(paymentId, req);
+        PaymentResponse paymentResponse = paymentService.executePayment(req);
         return ResponseEntity.ok(paymentResponse);
     }
 

@@ -89,6 +89,9 @@ public class BillService {
         if (updates.getCategory() != null) {
             bill.setCategory(updates.getCategory());
         }
+        if (updates.getStatus() != null) {
+            bill.setStatus(updates.getStatus());
+        }
 
         log.info("Bill updated: id={}", bill.getId());
         return toResponse(bill);
@@ -125,17 +128,20 @@ public class BillService {
 
     @Transactional(readOnly = true)
     public BillSummary getBill(UUID id) {
+        log.info("Fetching bill summary for id={}", id);
         return toSummary(getBillEntity(id));
     }
 
     @Transactional(readOnly = true)
     public BillEntity getBillEntity(UUID id) {
+        log.info("Fetching bill entity for id={}", id);
         return billRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Bill not found: " + id));
     }
 
     @Transactional(readOnly = true)
     public List<BillSummary> listByStatus(BillStatus status) {
+        log.info("Listing bills with status={}", status.name());
         return billRepository.findByStatus(status)
                 .stream()
                 .map(this::toSummary)
@@ -144,6 +150,7 @@ public class BillService {
 
     @Transactional(readOnly = true)
     public List<BillSummary> findAllUnpaid() {
+        log.info("Listing all unpaid bills");
         return billRepository
                 .findByStatusIn(List.of(BillStatus.PENDING, BillStatus.OVERDUE))
                 .stream()
@@ -153,6 +160,7 @@ public class BillService {
 
     @Transactional(readOnly = true)
     public List<BillSummary> findByDueDateRange(LocalDate start, LocalDate end) {
+        log.info("Finding bills due between {} and {}", start, end);
         return billRepository
                 .findByDueDateBetween(start, end)
                 .stream()
@@ -162,6 +170,7 @@ public class BillService {
 
     @Transactional(readOnly = true)
     public List<BillSummary> findUnpaidByDueDateRange(LocalDate start, LocalDate end) {
+        log.info("Finding unpaid bills due between {} and {}", start, end);
         return billRepository
                 .findByDueDateBetweenAndStatusIn(
                         start,
@@ -175,6 +184,7 @@ public class BillService {
 
     @Transactional(readOnly = true)
     public List<BillSummary> findUpcomingUnpaidBills(LocalDate start, LocalDate end) {
+        log.info("Finding upcoming unpaid bills due between {} and {}", start, end);
         return billRepository
                 .findByDueDateBetweenAndStatusIn(
                         start,

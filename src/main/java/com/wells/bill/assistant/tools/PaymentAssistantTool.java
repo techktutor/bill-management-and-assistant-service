@@ -25,14 +25,13 @@ public class PaymentAssistantTool {
     private final BillService billService;
     private final PaymentService paymentService;
 
-    @Tool(name = "createPaymentIntent",
-            description = "Create a payment intent for a bill. Does NOT execute payment. Requires confirmation.")
+    @Tool(name = "createPaymentIntent", description = "Create a payment intent for a bill. Does NOT execute payment. Requires confirmation.")
     public String createPaymentIntent(
             @ToolParam(description = "Bill ID") String billId,
             @ToolParam(description = "Merchant UUID") String merchantId,
             @ToolParam(description = "Customer UUID") String customerId,
-            @ToolParam(description = "User confirmation (must be true)") Boolean confirm
-    ) {
+            @ToolParam(description = "User confirmation (must be true)") Boolean confirm) {
+
         if (!Boolean.TRUE.equals(confirm)) {
             return "Payment intent not created. Please confirm with confirm=true.";
         }
@@ -57,14 +56,8 @@ public class PaymentAssistantTool {
 
             PaymentIntentResponse intent = paymentService.createPaymentIntent(req);
 
-            log.info("Payment intent created via AI tool: paymentId={} billId={}",
-                    intent.getPaymentId(), billId);
-
-            return String.format(
-                    "Payment intent created successfully. Payment ID: %s. Please confirm execution.",
-                    intent.getPaymentId()
-            );
-
+            log.info("Payment intent created via AI tool: paymentId={} billId={}", intent.getPaymentId(), billId);
+            return String.format("Payment intent created successfully. Payment ID: %s. Please confirm execution.", intent.getPaymentId());
         } catch (IllegalArgumentException e) {
             return "Invalid UUID provided.";
         } catch (Exception e) {
@@ -73,15 +66,14 @@ public class PaymentAssistantTool {
         }
     }
 
-    @Tool(name = "schedulePaymentIntent",
-            description = "Schedule a payment intent for a future date. Does NOT execute payment.")
+    @Tool(name = "schedulePaymentIntent", description = "Schedule a payment intent for a future date. Does NOT execute payment.")
     public String schedulePaymentIntent(
             @ToolParam(description = "Bill ID") String billId,
             @ToolParam(description = "Merchant UUID") String merchantId,
             @ToolParam(description = "Customer UUID") String customerId,
             @ToolParam(description = "Scheduled date (yyyy-MM-dd)") String date,
-            @ToolParam(description = "User confirmation (must be true)") Boolean confirm
-    ) {
+            @ToolParam(description = "User confirmation (must be true)") Boolean confirm) {
+
         if (!Boolean.TRUE.equals(confirm)) {
             return "Payment not scheduled. Please confirm with confirm=true.";
         }
@@ -107,20 +99,13 @@ public class PaymentAssistantTool {
             req.setAmount(bill.amount());
             req.setCurrency(DEFAULT_CURRENCY);
 
-            PaymentIntentResponse intent =
-                    paymentService.schedulePayment(billUUID, req, scheduledDate);
+            PaymentIntentResponse intent = paymentService.schedulePayment(billUUID, req, scheduledDate);
 
-            log.info("Scheduled payment intent created via AI tool: paymentId={} date={}",
-                    intent.getPaymentId(), date);
-
-            return String.format(
-                    "Payment scheduled successfully. Payment ID: %s on %s.",
-                    intent.getPaymentId(), date
-            );
-
-        } catch (Exception e) {
-            log.error("Failed to schedule payment intent via AI tool", e);
-            return "Failed to schedule payment: " + e.getMessage();
+            log.info("Scheduled payment intent created via AI tool: paymentId={} date={}", intent.getPaymentId(), date);
+            return String.format("Payment scheduled successfully. Payment ID: %s on %s.", intent.getPaymentId(), date);
+        } catch (Exception exception) {
+            log.error("Failed to schedule payment intent via AI tool", exception);
+            return "Failed to schedule payment: " + exception.getMessage();
         }
     }
 }

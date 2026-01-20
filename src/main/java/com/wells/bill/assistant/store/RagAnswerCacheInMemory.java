@@ -1,6 +1,6 @@
 package com.wells.bill.assistant.store;
 
-import com.wells.bill.assistant.service.RagEngineService;
+import com.wells.bill.assistant.model.RagAnswer;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
-public class InMemoryRagAnswerCache implements RagAnswerCache {
+public class RagAnswerCacheInMemory implements RagAnswerCache {
 
     /**
      * conversationId → (cacheKey → entry)
@@ -18,7 +18,7 @@ public class InMemoryRagAnswerCache implements RagAnswerCache {
     private final Map<String, Map<String, CacheEntry>> store = new ConcurrentHashMap<>();
 
     @Override
-    public Optional<RagEngineService.RagAnswer> get(String conversationId, String billId, String normalizedQuestion) {
+    public Optional<RagAnswer> get(String conversationId, String billId, String normalizedQuestion) {
         if (conversationId == null || billId == null || normalizedQuestion == null) {
             return Optional.empty();
         }
@@ -44,7 +44,7 @@ public class InMemoryRagAnswerCache implements RagAnswerCache {
     }
 
     @Override
-    public void put(String conversationId, String billId, String normalizedQuestion, RagEngineService.RagAnswer answer, Duration ttl) {
+    public void put(String conversationId, String billId, String normalizedQuestion, RagAnswer answer, Duration ttl) {
         if (conversationId == null || billId == null || normalizedQuestion == null || answer == null || ttl == null || ttl.isZero() || ttl.isNegative()) {
             return;
         }
@@ -68,7 +68,7 @@ public class InMemoryRagAnswerCache implements RagAnswerCache {
         return billId + "::" + normalizedQuestion;
     }
 
-    private record CacheEntry(RagEngineService.RagAnswer answer, Instant expiresAt) {
+    private record CacheEntry(RagAnswer answer, Instant expiresAt) {
         boolean isExpired() {
             return Instant.now().isAfter(expiresAt);
         }

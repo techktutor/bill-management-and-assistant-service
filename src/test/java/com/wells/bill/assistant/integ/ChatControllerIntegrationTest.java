@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wells.bill.assistant.model.ChatRequest;
 import com.wells.bill.assistant.service.OrchestratorService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -47,7 +48,7 @@ public class ChatControllerIntegrationTest {
 
     @Test
     void testChat() throws Exception {
-        Mockito.when(orchestrator.processMessage("c1", "hello"))
+        Mockito.when(orchestrator.processMessage(ArgumentMatchers.any(ChatRequest.class)))
                 .thenReturn("Hi there!");
 
         ChatRequest req = new ChatRequest("c1", "hello");

@@ -1,6 +1,7 @@
 package com.wells.bill.assistant.model;
 
 import com.wells.bill.assistant.entity.BillCategory;
+import com.wells.bill.assistant.entity.BillStatus;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,6 +15,8 @@ public class BillUpdateRequest {
     private String name;
 
     private String vendor;
+
+    private BillStatus status;
 
     private BillCategory category;
 

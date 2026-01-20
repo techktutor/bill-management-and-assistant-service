@@ -17,7 +17,7 @@ import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/chat")
+@RequestMapping("/api/chat/process")
 public class ChatController {
 
     private static final Logger log = LoggerFactory.getLogger(ChatController.class);
@@ -30,15 +30,22 @@ public class ChatController {
 
         // Basic manual validation for nulls (since @Valid only checks annotated fields)
         if (request.getConversationId() == null || request.getConversationId().isBlank()) {
-            return ResponseEntity.badRequest()
+            return ResponseEntity
+                    .badRequest()
                     .body(new ChatResponse(null, "conversationId cannot be empty", false));
         }
         if (request.getMessage() == null || request.getMessage().isBlank()) {
-            return ResponseEntity.badRequest()
+            return ResponseEntity
+                    .badRequest()
                     .body(new ChatResponse(request.getConversationId(), "message cannot be empty", false));
         }
-
-        String reply = orchestrator.processMessage(request.getConversationId(), request.getMessage());
+        ChatRequest validatedRequest = new ChatRequest(
+                request.getConversationId().trim(),
+                request.getMessage().trim(),
+                request.getUserId() != null ? request.getUserId().trim() : null,
+                request.getMerchantId() != null ? request.getMerchantId().trim() : null
+        );
+        String reply = orchestrator.processMessage(validatedRequest);
         return ResponseEntity.ok(new ChatResponse(request.getConversationId(), reply, true));
     }
 

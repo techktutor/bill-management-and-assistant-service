@@ -1,5 +1,6 @@
 package com.wells.bill.assistant.exception;
 
+import com.wells.bill.assistant.model.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -92,6 +93,29 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(err);
+    }
+
+    @ExceptionHandler(InvalidUserInputException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidInput(
+            InvalidUserInputException ex) {
+
+        return ResponseEntity
+                .badRequest()
+                .body(new ErrorResponse(
+                        ex.getMessage(),
+                        false
+                ));
+    }
+
+    @ExceptionHandler(InvalidPaymentStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPaymentState(
+            InvalidPaymentStateException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(
+                        ex.getMessage(), false
+                ));
     }
 
 }

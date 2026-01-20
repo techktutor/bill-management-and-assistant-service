@@ -15,4 +15,12 @@ public class ChatRequest {
 
     @NotBlank(message = "message is required and cannot be blank")
     private String message;
+
+    private String userId;
+    private String merchantId;
+
+    public ChatRequest(String conversationId, String message) {
+        this.conversationId = conversationId;
+        this.message = message;
+    }
 }

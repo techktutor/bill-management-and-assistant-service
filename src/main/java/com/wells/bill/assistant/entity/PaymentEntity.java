@@ -45,7 +45,7 @@ public class PaymentEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private PaymentType paymentType; // INSTANT / SCHEDULED
+    private PaymentType paymentType;
 
     @Column(name = "scheduled_date")
     private LocalDate scheduledDate;

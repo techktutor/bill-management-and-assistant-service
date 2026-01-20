@@ -15,11 +15,11 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-public class BillTextExtractionService {
+public class TextExtractorService {
 
     private final ChatClient chatClient;
 
-    public BillTextExtractionService(ChatClient chatClient) {
+    public TextExtractorService(ChatClient chatClient) {
         this.chatClient = chatClient;
     }
 

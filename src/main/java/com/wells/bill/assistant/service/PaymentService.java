@@ -33,7 +33,7 @@ public class PaymentService {
 
     private final BillService billService;
     private final PaymentRepository paymentRepository;
-    private final PaymentExecutionService paymentExecutionService;
+    private final PaymentExecutorService paymentExecutorService;
 
     // -------------------- Intent creation --------------------
     @Transactional
@@ -50,6 +50,7 @@ public class PaymentService {
         if (bill.getStatus() != BillStatus.PAYMENT_READY) {
             throw new IllegalStateException("Bill not ready for payment");
         }
+
         if (req.getAmount().compareTo(bill.getAmount()) != 0) {
             throw new IllegalArgumentException("Payment amount must match bill amount");
         }
@@ -82,15 +83,15 @@ public class PaymentService {
 
     // -------------------- Execution delegation --------------------
     @Transactional
-    public PaymentResponse executePayment(String paymentId, ExecutePaymentRequest req) {
-        PaymentEntity payment = paymentRepository.findByPaymentId(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+    public PaymentResponse executePayment(ExecutePaymentRequest req) {
+        PaymentEntity payment = paymentRepository.findByPaymentId(req.getPaymentId())
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + req.getPaymentId()));
 
         if (payment.getStatus() == PaymentStatus.SUCCESS) {
             return toPaymentResponse(payment);
         }
 
-        paymentExecutionService.executeSinglePayment(payment, req);
+        paymentExecutorService.executeSinglePayment(payment, req);
         return toPaymentResponse(payment);
     }
 
@@ -99,7 +100,7 @@ public class PaymentService {
         List<PaymentEntity> due = findDueScheduledPayments(asOfDate);
         for (PaymentEntity p : due) {
             try {
-                paymentExecutionService.executeSinglePayment(p, null);
+                paymentExecutorService.executeSinglePayment(p, null);
             } catch (Exception e) {
                 log.error("Error executing scheduled payment paymentId={}", p.getPaymentId(), e);
             }

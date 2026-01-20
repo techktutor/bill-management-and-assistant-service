@@ -1,0 +1,61 @@
+flowchart LR
+    Client[Client<br/> Web / Mobile App]
+    ChatCtrl[Chat Controller]
+    BillCtrl[Bill Controller]
+    PaymentCtrl[Payment Controller]
+    IngestCtrl[Ingest Controller]
+
+    Orchestrator[Orchestrator Service]
+
+    RagEngine[RAG Engine]
+    RagCache[RAG Answer Cache]
+    KnowledgeStore[Knowledge Store]
+
+    BillTool[Bill Assistant Tool]
+    PaymentTool[Payment Assistant Tool]
+
+    ConvStore[Conversation State Store]
+
+    BillRepo[Bill Repository]
+    PaymentRepo[Payment Repository]
+
+    PaymentGateway[Payment Gateway Client]
+
+    Client --> ChatCtrl
+    Client --> BillCtrl
+    Client --> PaymentCtrl
+    Client --> IngestCtrl
+
+    ChatCtrl --> Orchestrator
+    BillCtrl --> Orchestrator
+    PaymentCtrl --> Orchestrator
+
+    Orchestrator --> RagEngine
+    RagEngine --> RagCache
+    RagEngine --> KnowledgeStore
+
+    Orchestrator --> BillTool
+    BillTool --> BillRepo
+
+    Orchestrator --> PaymentTool
+    PaymentTool --> PaymentRepo
+    PaymentTool --> PaymentGateway
+
+    Orchestrator --> ConvStore
+    Orchestrator --> Client
+
+    style Client fill:#ffb,stroke:#333,stroke-width:2px
+    style Orchestrator fill:#ffb,stroke:#333,stroke-width:2px
+    style RagEngine fill:#ffb,stroke:#333,stroke-width:2px
+    style BillTool fill:#ffb,stroke:#333,stroke-width:2px
+    style PaymentTool fill:#ffb,stroke:#333,stroke-width:2px
+    style ConvStore fill:#ffb,stroke:#333,stroke-width:2px
+    style KnowledgeStore fill:#ffb,stroke:#333,stroke-width:2px
+    style BillRepo fill:#ffb,stroke:#333,stroke-width:2px
+    style PaymentRepo fill:#ffb,stroke:#333,stroke-width:2px
+    style PaymentGateway fill:#ffb,stroke:#333,stroke-width:2px
+    style ChatCtrl fill:#ffb,stroke:#333,stroke-width:2px
+    style BillCtrl fill:#ffb,stroke:#333,stroke-width:2px
+    style PaymentCtrl fill:#ffb,stroke:#333,stroke-width:2px
+    style IngestCtrl fill:#ffb,stroke:#333,stroke-width:2px
+    style RagCache fill:#ffb,stroke:#333,stroke-width:2px

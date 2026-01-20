@@ -6,23 +6,19 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.sql.Timestamp;
-import java.time.Clock;
-
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ConversationStateCleanupJob {
+public class ConversationCleaner {
 
     private final JdbcTemplate jdbcTemplate;
-    private final Clock clock;
 
-    @Scheduled(cron = "0 */10 * * * *") // every 10 minutes
+    // every 10 minutes
+    @Scheduled(cron = "0 */10 * * * *")
     public void cleanupExpiredStates() {
-        int deleted = jdbcTemplate.update("""
-            DELETE FROM conversation_state
-            WHERE expires_at <= ?
-            """, Timestamp.from(clock.instant()));
+        int deleted = jdbcTemplate.update(
+                "DELETE FROM conversation_state WHERE expires_at <= now()"
+        );
         if (deleted > 0) {
             log.info("Cleaned up {} expired conversation states", deleted);
         }

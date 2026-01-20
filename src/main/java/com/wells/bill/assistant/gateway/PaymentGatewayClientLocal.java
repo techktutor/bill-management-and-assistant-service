@@ -19,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @Component
-public class LocalPaymentGatewayClient implements PaymentGatewayClient {
+public class PaymentGatewayClientLocal implements PaymentGatewayClient {
 
     /**
      * Stores idempotent responses per gatewayIdempotencyKey.

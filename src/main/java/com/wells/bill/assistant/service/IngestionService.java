@@ -3,6 +3,7 @@ package com.wells.bill.assistant.service;
 import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.BillStatus;
 import com.wells.bill.assistant.repository.BillRepository;
+import com.wells.bill.assistant.util.BillChunker;
 import lombok.RequiredArgsConstructor;
 import org.apache.tika.Tika;
 import org.slf4j.Logger;
@@ -65,8 +66,12 @@ public class IngestionService {
             }
 
             // Step 2: Wrap & chunk
-            Document mainDoc = new Document(text);
-            List<Document> chunks = splitter.split(mainDoc);
+            List<Document> chunks = new BillChunker().chunkBillText(
+                    text,
+                    bill.getId().toString(),
+                    bill.getCustomerId().toString(),
+                    filename
+            );
 
             Instant now = Instant.now();
 

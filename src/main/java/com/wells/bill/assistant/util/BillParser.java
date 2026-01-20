@@ -1,8 +1,7 @@
-package com.wells.bill.assistant.service;
+package com.wells.bill.assistant.util;
 
 import com.wells.bill.assistant.model.BillDetails;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -10,10 +9,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-@Service
 public class BillParser {
 
-    public BillDetails parse(String text) {
+    public static BillDetails parse(String text) {
         BillDetails details = new BillDetails();
         details.setConsumerName(extractConsumerName(text));
         details.setConsumerNumber(extractConsumerNumber(text));
@@ -23,7 +21,7 @@ public class BillParser {
         return details;
     }
 
-    private String extractConsumerName(String text) {
+    private static String extractConsumerName(String text) {
         log.info("Extracting consumer name");
         Pattern pattern = Pattern.compile(
                 "Consumer Name\\s*:?\\s*([A-Za-z .]+?)(?=\\s+Consumer Number|\\s+Service Connection|\\s+Billing Period)",
@@ -40,7 +38,7 @@ public class BillParser {
         return null;
     }
 
-    private String extractConsumerNumber(String text) {
+    private static String extractConsumerNumber(String text) {
         log.info("Extracting consumer number");
         Pattern pattern = Pattern.compile(
                 "Consumer Number\\s*:?\\s*(\\d{6,15})",
@@ -57,7 +55,7 @@ public class BillParser {
         return null;
     }
 
-    private BigDecimal extractAmount(String text) {
+    private static BigDecimal extractAmount(String text) {
         log.info("Extracting amount...");
         Pattern pattern = Pattern.compile("(?:Amount Due|Total Amount Due|Net Payable|Payable Amount|Bill Amount|Current Charges)"
                         + "\\s*:?\\s*"
@@ -74,7 +72,7 @@ public class BillParser {
         return null;
     }
 
-    private LocalDate extractDate(String text, String labelRegex) {
+    private static LocalDate extractDate(String text, String labelRegex) {
         log.info("Extracting date for labels: {}", labelRegex);
 
         Pattern pattern = Pattern.compile("(?:" + labelRegex + ")"
@@ -85,7 +83,7 @@ public class BillParser {
         Matcher matcher = pattern.matcher(text);
         if (matcher.find()) {
             log.info("Date matched: {}", matcher.group(1));
-            return DateParserUtil.parseDate(matcher.group(1));
+            return DateParser.parseDate(matcher.group(1));
         }
 
         log.warn("Date not found for {}", labelRegex);

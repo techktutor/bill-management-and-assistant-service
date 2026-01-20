@@ -1,12 +1,14 @@
 package com.wells.bill.assistant.store;
 
+import com.wells.bill.assistant.model.ConversationContext;
+
 import java.time.Duration;
 
 public interface ConversationStateStore {
 
-    String get(String conversationId, String key);
+    ConversationContext load(String conversationId, String userId);
 
-    void put(String conversationId, String key, String value, Duration ttl);
+    void save(ConversationContext context, Duration ttl);
 
-    void clear(String conversationId, String key);
+    void delete(String conversationId);
 }

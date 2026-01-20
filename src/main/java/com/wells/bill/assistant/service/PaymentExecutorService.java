@@ -17,10 +17,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+import static com.wells.bill.assistant.entity.PaymentStatus.SCHEDULED;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PaymentExecutionService {
+public class PaymentExecutorService {
 
     private final PaymentRepository paymentRepository;
     private final PaymentGatewayClient gatewayClient;
@@ -32,15 +34,13 @@ public class PaymentExecutionService {
     public void executeDuePayments(LocalDate asOfDate) {
         log.info("[Scheduler] Executing scheduled payments due up to {}", asOfDate);
 
-        List<PaymentEntity> duePayments = paymentRepository
-                .findByStatusAndScheduledDateLessThanEqual(PaymentStatus.SCHEDULED, asOfDate);
+        List<PaymentEntity> duePayments = paymentRepository.findByStatusAndScheduledDateLessThanEqual(SCHEDULED, asOfDate);
 
         for (PaymentEntity payment : duePayments) {
             try {
                 executeSinglePayment(payment, null);
             } catch (Exception ex) {
-                log.error("Failed executing scheduled payment {}: {}",
-                        payment.getPaymentId(), ex.getMessage());
+                log.error("Failed executing scheduled payment {}: {}", payment.getPaymentId(), ex.getMessage());
             }
         }
     }
@@ -97,7 +97,9 @@ public class PaymentExecutionService {
             try {
                 Map<?, ?> payload = objectMapper.readValue(payment.getGatewayPayload(), Map.class);
                 Object token = payload.get("cardToken");
-                if (token != null) return token.toString();
+                if (token != null) {
+                    return token.toString();
+                }
             } catch (Exception e) {
                 log.warn("Failed to parse gatewayPayload for payment {}", payment.getPaymentId());
             }

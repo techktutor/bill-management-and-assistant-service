@@ -1,10 +1,10 @@
-package com.wells.bill.assistant.service;
+package com.wells.bill.assistant.util;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-public class DateParserUtil {
+public class DateParser {
 
     private static final List<DateTimeFormatter> FORMATTERS = List.of(
             DateTimeFormatter.ofPattern("dd-MMM-yyyy"),

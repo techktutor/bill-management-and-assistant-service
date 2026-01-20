@@ -38,26 +38,37 @@ public class BillAssistantTool {
     // -----------------------------
     @Tool(name = "getBillById", description = "Retrieve bill details by bill ID")
     public BillSummary getBillById(@ToolParam(description = "Bill ID") UUID billId) {
+        log.info("BillAssistantTool is Fetching bill details for billId={}", billId);
         return billService.getBill(billId);
     }
 
     @Tool(name = "listPendingBills", description = "List all unpaid bills (PENDING or OVERDUE) for the user")
     public List<BillSummary> listPendingBills() {
+        log.info("BillAssistantTool is Listing all unpaid bills");
         return billService.findAllUnpaid();
     }
 
     @Tool(name = "dueBillsNext7Days", description = "Bills due in next 7 days.")
     public List<BillSummary> dueBillsNext7Days() {
+        log.info("BillAssistantTool is Fetching bills due in next 7 days");
         return billService.findByDueDateRange(LocalDate.now(), LocalDate.now().plusDays(7));
     }
 
-    @Tool(name = "findUpcomingUnpaidBills", description = "Unpaid bills due in next 7 days.")
+    @Tool(name = "dueBillsNext1Year", description = "Bills due in next 1 Year.")
+    public List<BillSummary> dueBillsNext1Year() {
+        log.info("BillAssistantTool is Fetching bills due in next 1 year");
+        return billService.findByDueDateRange(LocalDate.now(), LocalDate.now().plusDays(400));
+    }
+
+    @Tool(name = "findUpcomingUnpaidBills", description = "Unpaid bills due in next 400 days.")
     public List<BillSummary> findUpcomingUnpaidBills() {
-        return billService.findUnpaidByDueDateRange(LocalDate.now(), LocalDate.now().plusDays(7));
+        log.info("BillAssistantTool is Fetching unpaid upcoming bills due in next 400 days");
+        return billService.findUnpaidByDueDateRange(LocalDate.now(), LocalDate.now().plusDays(400));
     }
 
     @Tool(name = "groupUnpaidBillsByVendor", description = "Group unpaid bills by vendor")
     public Map<String, List<BillSummary>> groupUnpaidBillsByVendor() {
+        log.info("BillAssistantTool is Grouping unpaid bills by vendor");
         return billService.findAllUnpaid()
                 .stream()
                 .collect(Collectors.groupingBy(

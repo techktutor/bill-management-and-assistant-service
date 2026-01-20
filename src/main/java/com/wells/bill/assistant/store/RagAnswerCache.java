@@ -1,13 +1,13 @@
 package com.wells.bill.assistant.store;
 
-import com.wells.bill.assistant.service.RagEngineService;
+import com.wells.bill.assistant.model.RagAnswer;
 
 import java.time.Duration;
 import java.util.Optional;
 
 public interface RagAnswerCache {
 
-    Optional<RagEngineService.RagAnswer> get(
+    Optional<RagAnswer> get(
             String conversationId,
             String billId,
             String normalizedQuestion
@@ -17,7 +17,7 @@ public interface RagAnswerCache {
             String conversationId,
             String billId,
             String normalizedQuestion,
-            RagEngineService.RagAnswer answer,
+            RagAnswer answer,
             Duration ttl
     );
 

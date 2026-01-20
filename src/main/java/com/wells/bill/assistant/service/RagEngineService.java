@@ -1,12 +1,13 @@
 package com.wells.bill.assistant.service;
 
 import com.wells.bill.assistant.builder.FilterExpressionBuilder;
+import com.wells.bill.assistant.model.RagAnswer;
 import com.wells.bill.assistant.store.RagAnswerCache;
+import com.wells.bill.assistant.util.CustomPromptTemple;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -16,11 +17,10 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RagEngineService {
-
-    private static final Logger log = LoggerFactory.getLogger(RagEngineService.class);
 
     private final VectorStore vectorStore;
     private final ChatClient chatClient;
@@ -44,6 +44,8 @@ public class RagEngineService {
     // PUBLIC ENTRY — Bill-scoped RAG (single authoritative entry)
     // ============================================================
     public RagAnswer answerBillQuestion(String conversationId, String billId, String question) {
+        log.info("RAG Engine: conversationId={} billId={} question={}", conversationId, billId, question);
+
         meterRegistry.counter("rag.requests.total").increment();
         meterRegistry.counter("rag.requests.bill").increment();
 
@@ -67,6 +69,8 @@ public class RagEngineService {
 
             if (cached.isPresent()) {
                 meterRegistry.counter("rag.cache.hit").increment();
+                log.info("RAG cache hit: conversationId={} billId={}", conversationId, billId);
+                log.info("RAG cached answer: {}", cached.get().answer());
                 return cached.get();
             }
             meterRegistry.counter("rag.cache.miss").increment();
@@ -94,9 +98,7 @@ public class RagEngineService {
 
             if (evaluated.confidence() < BLOCK_THRESHOLD) {
                 meterRegistry.counter("rag.answer.blocked").increment();
-                finalAnswer = RagAnswer.blocked(
-                        "I don’t have enough reliable information from the retrieved bills to answer that."
-                );
+                finalAnswer = RagAnswer.blocked("I don’t have enough reliable information from the retrieved bills to answer that.");
             } else if (evaluated.confidence() < WARN_THRESHOLD) {
                 meterRegistry.counter("rag.answer.warned").increment();
                 finalAnswer = RagAnswer.warned(
@@ -119,10 +121,47 @@ public class RagEngineService {
                     finalAnswer,
                     CACHE_TTL
             );
+            log.info("RAG final answer: {}", finalAnswer.answer());
             return Objects.requireNonNull(finalAnswer, "RagAnswer must never be null");
         } finally {
             totalTimer.stop(meterRegistry.timer("rag.latency.total"));
         }
+    }
+
+    private Set<String> inferChunkTypes(String query) {
+        String q = query.toLowerCase();
+
+        if (q.contains("amount") || q.contains("due") || q.contains("balance")) {
+            return Set.of("AMOUNT", "SUMMARY");
+        }
+
+        if (q.contains("date")) {
+            return Set.of("DATES");
+        }
+
+        if (q.contains("charge") || q.contains("breakdown")) {
+            return Set.of("LINE_ITEMS");
+        }
+
+        return Set.of(); // no preference
+    }
+
+    private String sanitizeQuery(String query) {
+        if (query == null) {
+            return "";
+        }
+
+        return query.toLowerCase()
+                // remove UUIDs (handled via metadata filters)
+                .replaceAll("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", " ")
+                // normalize currency symbols
+                .replaceAll("\\$", " usd ")
+                .replaceAll("₹", " inr ")
+                // remove punctuation (keep numbers and words)
+                .replaceAll("[^a-z0-9. ]", " ")
+                // collapse whitespace
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     // ============================================================
@@ -132,18 +171,71 @@ public class RagEngineService {
 
         int fetch = Math.max(TOP_K * HYBRID_FETCH_MULTIPLIER, TOP_K);
 
-        SearchRequest.Builder builder = SearchRequest.builder()
-                .query(query)
+        String sanitizedQuery = sanitizeQuery(normalizeQuestion(query));
+
+        Set<String> preferredTypes = inferChunkTypes(sanitizedQuery);
+
+        // ------------------------------------------------------------
+        // Build base bill filter
+        // ------------------------------------------------------------
+        FilterExpressionBuilder baseFilter =
+                FilterExpressionBuilder.start()
+                        .eq("bill_id", billId);
+
+        // ------------------------------------------------------------
+        // Optional chunk_type OR-filter (vector-safe)
+        // ------------------------------------------------------------
+        FilterExpressionBuilder finalFilter = baseFilter;
+
+        if (!preferredTypes.isEmpty()) {
+            FilterExpressionBuilder[] typeFilters =
+                    preferredTypes.stream()
+                            .map(t -> FilterExpressionBuilder.start().eq("chunk_type", t))
+                            .toArray(FilterExpressionBuilder[]::new);
+
+            finalFilter = FilterExpressionBuilder.start()
+                    .and(
+                            baseFilter,
+                            FilterExpressionBuilder.start().or(typeFilters)
+                    );
+        }
+
+        // ------------------------------------------------------------
+        // Primary retrieval
+        // ------------------------------------------------------------
+        SearchRequest request = SearchRequest.builder()
+                .query(sanitizedQuery)
                 .topK(fetch)
-                .filterExpression(
-                        FilterExpressionBuilder.start()
-                                .eq("parent_document_id", billId)
-                                .build()
-                );
+                .filterExpression(finalFilter.build())
+                .build();
 
-        List<Document> candidates = safeSimilaritySearch(builder.build());
-        if (candidates.isEmpty()) return List.of();
+        List<Document> candidates = safeSimilaritySearch(request);
 
+        // ------------------------------------------------------------
+        // Fallback: remove chunk_type constraint if nothing found
+        // ------------------------------------------------------------
+        if (candidates.isEmpty() && !preferredTypes.isEmpty()) {
+
+            SearchRequest fallback = SearchRequest.builder()
+                    .query(sanitizedQuery)
+                    .topK(fetch)
+                    .filterExpression(
+                            FilterExpressionBuilder.start()
+                                    .eq("bill_id", billId)
+                                    .build()
+                    )
+                    .build();
+
+            candidates = safeSimilaritySearch(fallback);
+        }
+
+        if (candidates.isEmpty()) {
+            return List.of();
+        }
+
+        // ------------------------------------------------------------
+        // Hybrid re-ranking (unchanged)
+        // ------------------------------------------------------------
         return rerankHybrid(query, candidates)
                 .stream()
                 .limit(TOP_K)
@@ -167,7 +259,6 @@ public class RagEngineService {
     // Hybrid re-ranking
     // ============================================================
     private List<Document> rerankHybrid(String query, List<Document> candidates) {
-
         List<String> tokens = tokenize(query);
         List<ScoredDoc> scored = new ArrayList<>(candidates.size());
 
@@ -228,18 +319,7 @@ public class RagEngineService {
     // Answer generation
     // ============================================================
     private String generateAnswer(String question, String context) {
-        String prompt = """
-                You are an AI Bill Management Assistant.
-                You must answer ONLY using the retrieved bill context.
-                If the answer is not explicitly present, say:
-                "I don’t have enough information from the retrieved bills."
-                
-                Question:
-                %s
-                
-                Retrieved Bill Context:
-                %s
-                """.formatted(question, context);
+        String prompt = CustomPromptTemple.prompt().formatted(question, context);
         Timer.Sample timer = Timer.start(meterRegistry);
         try {
             return Optional.ofNullable(
@@ -294,20 +374,38 @@ public class RagEngineService {
 
         long coverage = chunks.stream()
                 .map(d -> d.getMetadata().get("chunk_index"))
+                .filter(Objects::nonNull)
                 .distinct()
                 .count();
 
         boolean coverageStrong = coverage >= 2;
 
-        double lexical = lexicalScore(
-                tokenize(answer),
-                stitchContext(chunks)
-        );
+        String stitchedContext = stitchContext(chunks);
+        double lexical = lexicalScoreImproved(answer, stitchedContext);
 
         double confidence =
                 (retrievalStrong ? 0.5 : 0.0) +
                         (coverageStrong ? 0.3 : 0.0) +
                         (lexical >= MIN_LEXICAL_GROUNDING ? 0.2 : 0.0);
+        log.info("""
+                        RAG CONFIDENCE TRACE
+                        --------------------
+                        topScore        = {}
+                        chunksUsed      = {}
+                        coverage        = {}
+                        retrievalStrong = {}
+                        coverageStrong  = {}
+                        lexicalScore    = {}
+                        confidence      = {}
+                        """,
+                topScore,
+                chunks.size(),
+                coverage,
+                retrievalStrong,
+                coverageStrong,
+                lexical,
+                confidence
+        );
 
         return new RagAnswer(
                 answer,
@@ -317,21 +415,6 @@ public class RagEngineService {
         );
     }
 
-    public record RagAnswer(
-            String answer,
-            double confidence,
-            boolean grounded,
-            int chunksUsed
-    ) {
-        static RagAnswer blocked(String msg) {
-            return new RagAnswer(msg, 0.0, false, 0);
-        }
-
-        static RagAnswer warned(String msg, double confidence, int chunks) {
-            return new RagAnswer(msg, confidence, true, chunks);
-        }
-    }
-
     public static String normalizeQuestion(String q) {
         return q == null ? "" :
                 q.toLowerCase()
@@ -339,5 +422,75 @@ public class RagEngineService {
                         .replaceAll("\\s+", " ")
                         .replaceAll("[?!.]+$", "")
                         .trim();
+    }
+
+    private static final Map<String, String> CANONICAL_TERMS = Map.of(
+            "total amount due", "amount_due",
+            "amount due", "amount_due",
+            "balance due", "amount_due",
+            "payable amount", "amount_due",
+            "due amount", "amount_due"
+    );
+
+    private String normalizeForLexical(String s) {
+        if (s == null) return "";
+
+        return s.toLowerCase()
+                .replaceAll("\\$", " usd ")
+                .replaceAll("₹", " inr ")
+                .replaceAll("(\\d+),(\\d+)", "$1$2")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private String canonicalizeBillTerms(String s) {
+        String normalized = s;
+        for (var e : CANONICAL_TERMS.entrySet()) {
+            normalized = normalized.replace(e.getKey(), e.getValue());
+        }
+        return normalized;
+    }
+
+    private List<String> tokenizeForLexical(String s) {
+        return Arrays.stream(s.split("[^a-z0-9_.]+"))
+                .filter(t -> t.length() > 2)
+                .toList();
+    }
+
+    private double lexicalScoreImproved(String answer, String context) {
+        if (answer == null || context == null) {
+            return 0.0;
+        }
+
+        String normAnswer = canonicalizeBillTerms(normalizeForLexical(answer));
+        String normContext = canonicalizeBillTerms(normalizeForLexical(context));
+
+        List<String> answerTokens = tokenizeForLexical(normAnswer);
+        List<String> contextTokens = tokenizeForLexical(normContext);
+
+        if (answerTokens.isEmpty() || contextTokens.isEmpty()) {
+            return 0.0;
+        }
+
+        long matches = answerTokens.stream()
+                .filter(contextTokens::contains)
+                .count();
+
+        long numericMatches = answerTokens.stream()
+                .filter(t -> t.matches("\\d+(\\.\\d+)?"))
+                .filter(contextTokens::contains)
+                .count();
+
+        double base = (double) matches / answerTokens.size();
+
+        // 🔐 SAFE NUMERIC BOOST:
+        // If the numeric value exists verbatim in retrieved context,
+        // treat this as sufficient lexical grounding.
+        if (numericMatches > 0) {
+            return Math.max(base, MIN_LEXICAL_GROUNDING);
+        }
+
+        log.debug("Lexical grounding: base={}, numericMatch={}", base, numericMatches);
+        return base;
     }
 }

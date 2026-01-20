@@ -1,5 +1,6 @@
 package com.wells.bill.assistant.integ;
 
+import com.wells.bill.assistant.model.RagAnswer;
 import com.wells.bill.assistant.service.RagEngineService;
 import com.wells.bill.assistant.store.RagAnswerCache;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -54,12 +55,12 @@ class RagEngineServiceCacheTest {
         String billId = "b1";
         String question = "What is the due date?";
 
-        RagEngineService.RagAnswer cached = new RagEngineService.RagAnswer("Cached answer", 0.9, true, 3);
+        RagAnswer cached = new RagAnswer("Cached answer", 0.9, true, 3);
 
         when(ragAnswerCache.get(eq(conversationId), eq(billId), any()))
                 .thenReturn(Optional.of(cached));
 
-        RagEngineService.RagAnswer out = service.answerBillQuestion(conversationId, billId, question);
+        RagAnswer out = service.answerBillQuestion(conversationId, billId, question);
 
         assertEquals("Cached answer", out.answer());
 
@@ -94,7 +95,7 @@ class RagEngineServiceCacheTest {
         when(requestSpec.call()).thenReturn(callSpec);
         when(callSpec.content()).thenReturn("The amount is $100");
 
-        RagEngineService.RagAnswer out = service.answerBillQuestion(conversationId, billId, question);
+        RagAnswer out = service.answerBillQuestion(conversationId, billId, question);
 
         assertFalse(out.grounded());
         assertEquals(0.0, out.confidence());

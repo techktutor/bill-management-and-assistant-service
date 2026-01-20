@@ -1,6 +1,7 @@
 package com.wells.bill.assistant.service;
 
 import com.wells.bill.assistant.builder.FilterExpressionBuilder;
+import com.wells.bill.assistant.model.RagAnswer;
 import com.wells.bill.assistant.store.RagAnswerCache;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -59,7 +60,7 @@ class RagEngineServiceTest {
 
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(d));
 
-        RagEngineService.RagAnswer answer = service.answerBillQuestion("conversation-4", "bill-123", "What is the due date?");
+        RagAnswer answer = service.answerBillQuestion("conversation-4", "bill-123", "What is the due date?");
 
         assertNotNull(answer);
         assertFalse(answer.grounded());
@@ -73,7 +74,7 @@ class RagEngineServiceTest {
     void answerBillQuestion_returnsBlocked_whenNoDocuments() {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
-        RagEngineService.RagAnswer answer = service.answerBillQuestion("conversation-5", "bill-123", "What is the due date?");
+        RagAnswer answer = service.answerBillQuestion("conversation-5", "bill-123", "What is the due date?");
 
         assertFalse(answer.grounded());
         assertEquals(0.0, answer.confidence());
@@ -133,8 +134,8 @@ class RagEngineServiceTest {
 
     @Test
     void answerBillQuestion_usesCache_andSkipsRetrieval() {
-        RagEngineService.RagAnswer cached =
-                new RagEngineService.RagAnswer(
+        RagAnswer cached =
+                new RagAnswer(
                         "Cached answer",
                         0.9,
                         true,
@@ -147,7 +148,7 @@ class RagEngineServiceTest {
                 anyString()
         )).thenReturn(java.util.Optional.of(cached));
 
-        RagEngineService.RagAnswer result =
+        RagAnswer result =
                 service.answerBillQuestion(
                         "conversation-1",
                         "bill-123",
@@ -174,7 +175,7 @@ class RagEngineServiceTest {
         when(ragAnswerCache.get(anyString(), anyString(), anyString()))
                 .thenReturn(Optional.empty());
 
-        RagEngineService.RagAnswer answer = service.answerBillQuestion(
+        RagAnswer answer = service.answerBillQuestion(
                 "conversation-1",
                 "bill-111",
                 "When should I pay?"
@@ -208,7 +209,7 @@ class RagEngineServiceTest {
         when(ragAnswerCache.get(anyString(), anyString(), anyString()))
                 .thenReturn(Optional.empty());
 
-        RagEngineService.RagAnswer answer = service.answerBillQuestion(
+        RagAnswer answer = service.answerBillQuestion(
                 "conversation-2",
                 "bill-456",
                 "When should I pay?"
@@ -243,7 +244,7 @@ class RagEngineServiceTest {
         when(ragAnswerCache.get(anyString(), anyString(), anyString()))
                 .thenReturn(Optional.empty());
 
-        RagEngineService.RagAnswer answer =
+        RagAnswer answer =
                 service.answerBillQuestion(
                         "conversation-2",
                         "bill-456",
@@ -279,7 +280,7 @@ class RagEngineServiceTest {
         when(ragAnswerCache.get(anyString(), anyString(), anyString()))
                 .thenReturn(Optional.empty());
 
-        RagEngineService.RagAnswer answer = service.answerBillQuestion(
+        RagAnswer answer = service.answerBillQuestion(
                 "conversation-3",
                 "bill-789",
                 "When is the due date?"
@@ -316,7 +317,7 @@ class RagEngineServiceTest {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(d1, d2, d3));
         when(ragAnswerCache.get(anyString(), anyString(), anyString())).thenReturn(Optional.empty());
 
-        RagEngineService.RagAnswer answer =
+        RagAnswer answer =
                 service.answerBillQuestion(
                         "conversation-3",
                         "bill-789",
