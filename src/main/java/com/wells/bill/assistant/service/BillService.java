@@ -3,7 +3,10 @@ package com.wells.bill.assistant.service;
 import com.wells.bill.assistant.entity.BillCategory;
 import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.BillStatus;
-import com.wells.bill.assistant.model.*;
+import com.wells.bill.assistant.model.BillCreateResponse;
+import com.wells.bill.assistant.model.BillDetails;
+import com.wells.bill.assistant.model.BillSummary;
+import com.wells.bill.assistant.model.BillUpdateRequest;
 import com.wells.bill.assistant.repository.BillRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +31,9 @@ public class BillService {
      * No vector ingestion happens here.
      */
     @Transactional
-    public BillCreateResponse createBill(BillCreateRequest req) {
+    public UUID createBill(BillDetails req) {
+        log.info("Creating bill for customerId={}", req.getCustomerId());
+
         if (req.getCustomerId() == null) {
             throw new IllegalArgumentException("customerId is required");
         }
@@ -37,41 +42,12 @@ public class BillService {
             throw new IllegalArgumentException("name is required");
         }
 
-        BillEntity bill = getBillEntity(req);
+        BillEntity bill = createDomain(req);
 
         BillEntity saved = billRepository.save(bill);
 
-        log.info("Bill created: id={} name={}", saved.getId(), saved.getConsumerName());
-        return toResponse(saved);
-    }
-
-    private static BillEntity getBillEntity(BillCreateRequest req) {
-        BillEntity bill = new BillEntity();
-        bill.setCustomerId(req.getCustomerId());
-        bill.setConsumerName(req.getConsumerName());
-        bill.setConsumerNumber(req.getConsumerNumber());
-        bill.setFileName(req.getFileName());
-        bill.setAmount(req.getAmount());
-        bill.setCurrency(req.getCurrency());
-        bill.setStatus(req.getStatus());
-        bill.setDueDate(req.getDueDate());
-        bill.setVendor(req.getVendor());
-        bill.setCategory(req.getCategory() == null ? BillCategory.OTHER : req.getCategory());
-        bill.setAutoPayEnabled(Boolean.TRUE.equals(req.getAutoPayEnabled()));
-        bill.setStatus(BillStatus.UPLOADED);
-        return bill;
-    }
-
-    public UUID createBill(BillDetails billDetails) {
-        BillCreateRequest req = new BillCreateRequest();
-        req.setCustomerId(UUID.randomUUID());
-        req.setConsumerName(billDetails.getConsumerName());
-        req.setConsumerNumber(billDetails.getConsumerNumber());
-        req.setFileName(billDetails.getFileName());
-        req.setAmount(billDetails.getAmount());
-        req.setCurrency("INR");
-        req.setDueDate(billDetails.getDueDate());
-        return createBill(req).getId();
+        log.info("Bill Created with id= {}", saved.getId());
+        return saved.getId();
     }
 
     /**
@@ -79,7 +55,7 @@ public class BillService {
      */
     @Transactional
     public BillCreateResponse updateBill(UUID id, BillUpdateRequest updates) {
-        BillEntity bill = getBillEntity(id);
+        BillEntity bill = getBillById(id);
         if (updates.getName() != null) {
             bill.setConsumerName(updates.getName());
         }
@@ -100,8 +76,9 @@ public class BillService {
     /**
      * Mark bill PAID – invoked ONLY by PaymentExecutionService.
      */
+    @Transactional
     public void markPaid(UUID billId, String paymentId) {
-        BillEntity bill = getBillEntity(billId);
+        BillEntity bill = getBillById(billId);
 
         if (bill.getStatus() == BillStatus.PAID) {
             return;
@@ -116,9 +93,11 @@ public class BillService {
     /**
      * Scheduled overdue update.
      */
+    @Transactional
     public void updateOverdue() {
         LocalDate today = LocalDate.now();
-        List<BillEntity> overdueBills = billRepository.findByStatusAndDueDateBefore(BillStatus.PENDING, today);
+        List<BillEntity> overdueBills = billRepository
+                .findByStatusAndDueDateBefore(BillStatus.VERIFIED, today);
 
         overdueBills.forEach(bill -> {
             bill.setStatus(BillStatus.OVERDUE);
@@ -127,13 +106,7 @@ public class BillService {
     }
 
     @Transactional(readOnly = true)
-    public BillSummary getBill(UUID id) {
-        log.info("Fetching bill summary for id={}", id);
-        return toSummary(getBillEntity(id));
-    }
-
-    @Transactional(readOnly = true)
-    public BillEntity getBillEntity(UUID id) {
+    public BillEntity getBillById(UUID id) {
         log.info("Fetching bill entity for id={}", id);
         return billRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Bill not found: " + id));
@@ -152,7 +125,7 @@ public class BillService {
     public List<BillSummary> findAllUnpaid() {
         log.info("Listing all unpaid bills");
         return billRepository
-                .findByStatusIn(List.of(BillStatus.PENDING, BillStatus.OVERDUE))
+                .findByStatusIn(List.of(BillStatus.VERIFIED, BillStatus.OVERDUE))
                 .stream()
                 .map(this::toSummary)
                 .toList();
@@ -175,7 +148,7 @@ public class BillService {
                 .findByDueDateBetweenAndStatusIn(
                         start,
                         end,
-                        List.of(BillStatus.PENDING, BillStatus.OVERDUE)
+                        List.of(BillStatus.VERIFIED, BillStatus.OVERDUE)
                 )
                 .stream()
                 .map(this::toSummary)
@@ -183,17 +156,21 @@ public class BillService {
     }
 
     @Transactional(readOnly = true)
-    public List<BillSummary> findUpcomingUnpaidBills(LocalDate start, LocalDate end) {
-        log.info("Finding upcoming unpaid bills due between {} and {}", start, end);
+    public List<BillSummary> findByDueDateAfterAndStatusIn(LocalDate start) {
+        log.info("Finding unpaid bills due after: {}", start);
         return billRepository
-                .findByDueDateBetweenAndStatusIn(
+                .findByDueDateAfterAndStatusIn(
                         start,
-                        end,
-                        List.of(BillStatus.PENDING, BillStatus.OVERDUE)
+                        List.of(BillStatus.VERIFIED, BillStatus.OVERDUE)
                 )
                 .stream()
                 .map(this::toSummary)
                 .toList();
+    }
+
+    public BillSummary getBillSummary(UUID id) {
+        log.info("Fetching bill summary for id={}", id);
+        return toSummary(getBillById(id));
     }
 
     private BillCreateResponse toResponse(BillEntity bill) {
@@ -204,5 +181,22 @@ public class BillService {
 
     private BillSummary toSummary(BillEntity bill) {
         return BillSummary.from(bill);
+    }
+
+    private static BillEntity createDomain(BillDetails req) {
+        BillEntity bill = new BillEntity();
+        bill.setCustomerId(req.getCustomerId());
+        bill.setConsumerName(req.getConsumerName());
+        bill.setConsumerNumber(req.getConsumerNumber());
+        bill.setFileName(req.getFileName());
+        bill.setAmount(req.getAmount());
+        bill.setCurrency("INR");
+        bill.setStatus(BillStatus.UPLOADED);
+        bill.setDueDate(req.getDueDate());
+        bill.setVendor(req.getVendor());
+        bill.setCategory(req.getCategory() == null ? BillCategory.OTHER : req.getCategory());
+        bill.setAutoPayEnabled(Boolean.TRUE.equals(req.getAutoPayEnabled()));
+        bill.setStatus(BillStatus.UPLOADED);
+        return bill;
     }
 }

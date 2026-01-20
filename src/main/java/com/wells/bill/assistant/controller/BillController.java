@@ -1,7 +1,6 @@
 package com.wells.bill.assistant.controller;
 
 import com.wells.bill.assistant.entity.BillStatus;
-import com.wells.bill.assistant.model.BillCreateRequest;
 import com.wells.bill.assistant.model.BillCreateResponse;
 import com.wells.bill.assistant.model.BillSummary;
 import com.wells.bill.assistant.model.BillUpdateRequest;
@@ -24,20 +23,11 @@ public class BillController {
     private final BillService billService;
 
     // -----------------------------
-    // Create Bill
-    // -----------------------------
-    @PostMapping
-    public ResponseEntity<BillCreateResponse> createBill(@RequestBody BillCreateRequest req) {
-        BillCreateResponse billCreateResponse = billService.createBill(req);
-        return ResponseEntity.ok(billCreateResponse);
-    }
-
-    // -----------------------------
     // Get Bill by ID
     // -----------------------------
     @GetMapping("/{billId}")
     public ResponseEntity<BillSummary> getBill(@PathVariable UUID billId) {
-        return ResponseEntity.ok(billService.getBill(billId));
+        return ResponseEntity.ok(billService.getBillSummary(billId));
     }
 
     // -----------------------------
@@ -63,7 +53,7 @@ public class BillController {
     @GetMapping("/upcoming")
     public ResponseEntity<List<BillSummary>> upcoming() {
         LocalDate now = LocalDate.now();
-        return ResponseEntity.ok(billService.findUpcomingUnpaidBills(now, now.plusDays(7)));
+        return ResponseEntity.ok(billService.findByDueDateAfterAndStatusIn(now));
     }
 
     // -----------------------------

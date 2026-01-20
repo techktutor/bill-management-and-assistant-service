@@ -39,7 +39,7 @@ public class BillAssistantTool {
     @Tool(name = "getBillById", description = "Retrieve bill details by bill ID")
     public BillSummary getBillById(@ToolParam(description = "Bill ID") UUID billId) {
         log.info("BillAssistantTool is Fetching bill details for billId={}", billId);
-        return billService.getBill(billId);
+        return billService.getBillSummary(billId);
     }
 
     @Tool(name = "listPendingBills", description = "List all unpaid bills (PENDING or OVERDUE) for the user")
@@ -60,10 +60,10 @@ public class BillAssistantTool {
         return billService.findByDueDateRange(LocalDate.now(), LocalDate.now().plusDays(400));
     }
 
-    @Tool(name = "findUpcomingUnpaidBills", description = "Unpaid bills due in next 400 days.")
-    public List<BillSummary> findUpcomingUnpaidBills() {
-        log.info("BillAssistantTool is Fetching unpaid upcoming bills due in next 400 days");
-        return billService.findUnpaidByDueDateRange(LocalDate.now(), LocalDate.now().plusDays(400));
+    @Tool(name = "findUnpaidByDueDateRange", description = "Fetch upcoming bills.")
+    public List<BillSummary> findUnpaidByDueDateRange(@ToolParam(description = "Start Date") LocalDate start, @ToolParam(description = "End Date") LocalDate end) {
+        log.info("BillAssistantTool is Fetching unpaid Bills due between: {} and {}", start, end);
+        return billService.findUnpaidByDueDateRange(start, end);
     }
 
     @Tool(name = "groupUnpaidBillsByVendor", description = "Group unpaid bills by vendor")

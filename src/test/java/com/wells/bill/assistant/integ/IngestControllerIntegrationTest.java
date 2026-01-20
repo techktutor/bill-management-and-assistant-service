@@ -1,7 +1,7 @@
 package com.wells.bill.assistant.integ;
 
 import com.wells.bill.assistant.model.BillDetails;
-import com.wells.bill.assistant.service.TextExtractorService;
+import com.wells.bill.assistant.service.BillParser;
 import com.wells.bill.assistant.service.IngestionService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -40,7 +40,7 @@ public class IngestControllerIntegrationTest {
     IngestionService mockIngestionService;
 
     @Autowired
-    TextExtractorService mockTextExtractorService;
+    BillParser billParser;
 
     @TestConfiguration
     static class MockConfig {
@@ -53,8 +53,8 @@ public class IngestControllerIntegrationTest {
 
         @Bean
         @Primary
-        public TextExtractorService mockBillTextExtractionService() {
-            return mock(TextExtractorService.class);
+        public BillParser mockBillBillParser() {
+            return mock(BillParser.class);
         }
     }
 
@@ -65,14 +65,13 @@ public class IngestControllerIntegrationTest {
         String normalizedText = """
                 STATE ELECTRICITY DISTRIBUTION COMPANY LTD Electricity Bill (Tax Invoice) Consumer Name : Ramesh Kumar Consumer Number : 12345678901 Service Connection : Domestic Billing Period : 01-Aug-2025 to 31-Aug-2025 Meter Number : DL123456 Previous Reading : 2548.00 Current Reading : 2675.00 Units Consumed : 127 kWh Energy Charges : Rs. 635.00 Fixed Charges : Rs. 120.00 Electricity Duty : Rs. 45.00 Fuel Adjustment : Rs. 18.50 Late Payment Surcharge (if any) : Rs. 25.00 ----------------------------------------- Total Amount Due : ₹ 818.50 ----------------------------------------- Bill Issue Date : 05-Aug-2025 Due Date : 20-Aug-2025 Last Due Date : 25-Aug-2025 After Due Date, a Late Payment Surcharge will be applicable as per tariff order. Customer Care: Toll Free No : 1912 Website : www.statepower.in This is a computer generated bill.
                 """;
-        Mockito.when(mockTextExtractorService.extractText(any(MultipartFile.class))).thenReturn(normalizedText);
 
         BillDetails details = new BillDetails();
         details.setAmount(new BigDecimal("818.50")); // Simulate missing amount to trigger LLM extraction
         details.setDueDate(LocalDate.now()); // Simulate missing due date to trigger LLM extraction
         details.setConsumerName("Ramesh Kumar");
         details.setConsumerNumber("12345678901");
-        Mockito.when(mockTextExtractorService.extractUsingLLM(anyString())).thenReturn(details);
+        Mockito.when(billParser.parse(anyString())).thenReturn(details);
 
         Mockito.when(mockIngestionService.ingestFile(any(UUID.class), any(MultipartFile.class))).thenReturn(4);
 

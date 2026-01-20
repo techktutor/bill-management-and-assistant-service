@@ -41,9 +41,9 @@ public class PaymentAssistantTool {
             UUID merchantUUID = UUID.fromString(merchantId);
             UUID customerUUID = UUID.fromString(customerId);
 
-            BillSummary bill = billService.getBill(billUUID);
+            BillSummary bill = billService.getBillSummary(billUUID);
 
-            if (bill.status() != BillStatus.PAYMENT_READY) {
+            if (bill.status() != BillStatus.VERIFIED) {
                 return "Bill is not ready for payment.";
             }
 
@@ -88,8 +88,8 @@ public class PaymentAssistantTool {
                 return "Scheduled date must be in the future.";
             }
 
-            BillSummary bill = billService.getBill(billUUID);
-            if (bill.status() != BillStatus.PAYMENT_READY) {
+            BillSummary bill = billService.getBillSummary(billUUID);
+            if (bill.status() != BillStatus.VERIFIED) {
                 return "Bill is not ready for scheduled payment.";
             }
 

@@ -9,7 +9,6 @@ import org.apache.tika.Tika;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +29,6 @@ public class IngestionService {
     private final VectorStore vectorStore;
     private final BillRepository billRepository;
 
-    private final TokenTextSplitter splitter = new TokenTextSplitter();
     private final Tika tika = new Tika();
 
     /**
@@ -38,6 +36,7 @@ public class IngestionService {
      */
     @Transactional
     public int ingestFile(UUID billId, MultipartFile file) {
+        log.info("Starting ETL ingestion for bill: {}", billId);
 
         BillEntity bill = billRepository.findById(billId)
                 .orElseThrow(() -> new IllegalArgumentException("Bill not found"));
@@ -47,12 +46,9 @@ public class IngestionService {
         }
 
         try (InputStream is = file.getInputStream()) {
-
             if (file.getSize() > (20 * 1024 * 1024)) {
                 throw new IllegalArgumentException("File too large. Max allowed: 20MB");
             }
-
-            bill.setStatus(BillStatus.INGESTING);
 
             String filename = (file.getOriginalFilename() != null)
                     ? file.getOriginalFilename()
@@ -94,7 +90,7 @@ public class IngestionService {
             bill.setIngestedAt(now);
             bill.setStatus(BillStatus.INGESTED);
 
-            log.info("Successfully ingested bill {} into {} chunks", billId, chunks.size());
+            log.info("Successfully ingested bill: {} into: {} chunks", billId, chunks.size());
             return chunks.size();
         } catch (Exception e) {
             bill.setStatus(BillStatus.FAILED);

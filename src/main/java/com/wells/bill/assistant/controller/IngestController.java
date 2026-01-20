@@ -3,8 +3,8 @@ package com.wells.bill.assistant.controller;
 import com.wells.bill.assistant.model.BillDetails;
 import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.IngestionService;
-import com.wells.bill.assistant.service.TextExtractorService;
-import com.wells.bill.assistant.util.BillParser;
+import com.wells.bill.assistant.util.TextExtractor;
+import com.wells.bill.assistant.service.BillParser;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,9 +25,9 @@ public class IngestController {
 
     private static final Logger log = LoggerFactory.getLogger(IngestController.class);
 
+    private final BillParser billParser;
     private final BillService billService;
     private final IngestionService etlService;
-    private final TextExtractorService textExtractorService;
 
     @PostMapping(value = "/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> ingest(@RequestPart("files") List<MultipartFile> files) {
@@ -48,13 +48,14 @@ public class IngestController {
 
             log.info("Processing file: {}", file.getOriginalFilename());
 
-            String normalizedText = textExtractorService.extractText(file);
-            BillDetails details = BillParser.parse(normalizedText);
+            String normalizedText = TextExtractor.extractText(file);
+            BillDetails details = billParser.parse(normalizedText);
 
             if (details.getAmount() == null || details.getDueDate() == null) {
-                details = textExtractorService.extractUsingLLM(normalizedText);
+                details = billParser.parseUsingLLM(normalizedText);
             }
             details.setFileName(file.getOriginalFilename());
+            details.setCustomerId(UUID.randomUUID());
 
             UUID billId = billService.createBill(details);
 

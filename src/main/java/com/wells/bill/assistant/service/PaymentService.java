@@ -1,12 +1,12 @@
 package com.wells.bill.assistant.service;
 
-import com.wells.bill.assistant.entity.*;
+import com.wells.bill.assistant.entity.BillStatus;
+import com.wells.bill.assistant.entity.PaymentEntity;
+import com.wells.bill.assistant.entity.PaymentStatus;
+import com.wells.bill.assistant.entity.PaymentType;
 import com.wells.bill.assistant.exception.DuplicatePaymentException;
 import com.wells.bill.assistant.exception.DuplicateScheduleException;
-import com.wells.bill.assistant.model.ExecutePaymentRequest;
-import com.wells.bill.assistant.model.PaymentIntentRequest;
-import com.wells.bill.assistant.model.PaymentIntentResponse;
-import com.wells.bill.assistant.model.PaymentResponse;
+import com.wells.bill.assistant.model.*;
 import com.wells.bill.assistant.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,12 +46,12 @@ public class PaymentService {
         }
 
         // 🔐 Validate bill before creating intent
-        BillEntity bill = billService.getBillEntity(req.getBillId());
-        if (bill.getStatus() != BillStatus.PAYMENT_READY) {
+        BillSummary bill = billService.getBillSummary(req.getBillId());
+        if (bill.status() != BillStatus.VERIFIED) {
             throw new IllegalStateException("Bill not ready for payment");
         }
 
-        if (req.getAmount().compareTo(bill.getAmount()) != 0) {
+        if (req.getAmount().compareTo(bill.amount()) != 0) {
             throw new IllegalArgumentException("Payment amount must match bill amount");
         }
 
@@ -62,12 +62,12 @@ public class PaymentService {
         return toIntentResponse(saved);
     }
 
-    private static PaymentEntity getPaymentEntity(PaymentIntentRequest req, BillEntity bill) {
+    private static PaymentEntity getPaymentEntity(PaymentIntentRequest req, BillSummary bill) {
         PaymentEntity payment = new PaymentEntity();
         payment.setCustomerId(req.getCustomerId());
         payment.setBillId(req.getBillId());
         payment.setAmount(req.getAmount());
-        payment.setCurrency(req.getCurrency() == null ? bill.getCurrency() : req.getCurrency());
+        payment.setCurrency(req.getCurrency() == null ? bill.currency() : req.getCurrency());
         payment.setIdempotencyKey(req.getIdempotencyKey());
         payment.setPaymentType(req.getPaymentType() == null ? PaymentType.IMMEDIATE : req.getPaymentType());
         payment.setApprovalSource(req.getApprovalSource());
@@ -106,6 +106,7 @@ public class PaymentService {
             }
         }
     }
+
     public List<PaymentEntity> findDueScheduledPayments(LocalDate asOfDate) {
         return paymentRepository.findByPaymentTypeAndStatusAndScheduledDateLessThanEqual(
                 PaymentType.SCHEDULED,
@@ -113,6 +114,7 @@ public class PaymentService {
                 asOfDate
         );
     }
+
     // -------------------- Scheduling helpers --------------------
     @Transactional
     public PaymentIntentResponse schedulePayment(UUID billId, PaymentIntentRequest req, LocalDate scheduledDate) {
@@ -125,16 +127,16 @@ public class PaymentService {
                     throw new DuplicateScheduleException("Scheduled payment already exists");
                 });
 
-        BillEntity bill = billService.getBillEntity(billId);
-        if (bill.getStatus() != BillStatus.PAYMENT_READY) {
+        BillSummary bill = billService.getBillSummary(billId);
+        if (bill.status() != BillStatus.VERIFIED) {
             throw new IllegalStateException("Bill not ready for scheduled payment");
         }
 
         PaymentEntity payment = new PaymentEntity();
         payment.setCustomerId(req.getCustomerId());
         payment.setBillId(billId);
-        payment.setAmount(bill.getAmount());
-        payment.setCurrency(bill.getCurrency());
+        payment.setAmount(bill.amount());
+        payment.setCurrency(bill.currency());
         payment.setIdempotencyKey(req.getIdempotencyKey());
         payment.setPaymentType(PaymentType.SCHEDULED);
         payment.setScheduledDate(scheduledDate);
