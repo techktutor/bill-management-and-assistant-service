@@ -55,5 +55,6 @@ spring:
 
 server:
   port: 8080
+  shutdown: GRACEFUL
   servlet:
     context-path: /assistant

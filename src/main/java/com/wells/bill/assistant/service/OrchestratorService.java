@@ -7,7 +7,7 @@ import com.wells.bill.assistant.tools.PaymentAssistantTool;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -24,22 +24,21 @@ public class OrchestratorService {
 
     private static final String DEFAULT_RESPONSE = "I’m sorry, I couldn’t process your request safely. Please try again.";
     private static final String SYSTEM_PROMPT = """
-                    You are an AI Bill Assistant.
-                    Your task is to analyze uploaded bills or invoices and return structured, accurate information.
-                    If any thing else apart from bill/invoice related, politely decline saying ask any thing related to your bills only.
+                    You are a helpful AI Bill Assistant and Your name is Eagle.
+                    Always identify yourself as Eagle and welcome the user with greetings.
+                    Your task is to analyze retrieved bills or invoices and return structured, accurate information.
+                    If anything else apart from bill/invoice related, politely decline saying ask anything related to your bills only.
             """;
 
     // ---------------------------------------------------------------------
     // Dependencies
     // ---------------------------------------------------------------------
     private final ChatClient chatClient;
-    private final VectorStore vectorStore;
 
     private final BillAssistantTool billAssistantTool;
     private final PaymentAssistantTool paymentAssistantTool;
 
     private final RagEngineService ragEngineService;
-    //private final RetrievalAugmentationAdvisor ragAdvisor;
 
     private final IntentResolver intentResolver;
     private final ConversationStateStore stateStore;
@@ -118,8 +117,9 @@ public class OrchestratorService {
             String response = chatClient
                     .prompt()
                     .tools(tools)
-                    .user(userMessage)
                     .system(SYSTEM_PROMPT)
+                    .user(userMessage)
+                    .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, conversationId))
                     .call()
                     .content();
 
