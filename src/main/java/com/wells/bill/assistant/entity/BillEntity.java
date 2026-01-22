@@ -1,102 +1,126 @@
 package com.wells.bill.assistant.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "bills", indexes = {
-        @Index(name = "idx_bills_customer_id", columnList = "customer_id"),
-        @Index(name = "idx_bills_status", columnList = "status"),
-        @Index(name = "idx_bills_vendor", columnList = "vendor"),
-        @Index(name = "idx_bills_due_date", columnList = "due_date")
-})
+@Table(name = "bills",
+        indexes = {
+                @Index(name = "idx_bill_user", columnList = "user_id"),
+                @Index(name = "idx_bill_consumer", columnList = "consumer_id"),
+                @Index(name = "idx_bill_consumer_name", columnList = "consumer_name"),
+                @Index(name = "idx_bill_category", columnList = "category"),
+                @Index(name = "idx_bill_due_date", columnList = "due_date"),
+                @Index(name = "idx_bill_status", columnList = "status"),
+                @Index(name = "idx_bill_payment", columnList = "payment_id")
+        }
+)
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@ToString(exclude = "metadata")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class BillEntity {
+
     @Id
     @GeneratedValue
+    @EqualsAndHashCode.Include
     @UuidGenerator(style = UuidGenerator.Style.TIME)
+    @Column(name = "id", nullable = false, updatable = false, unique = true)
     private UUID id;
 
-    @Column(name = "customer_id", nullable = false)
-    private UUID customerId;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
-    @Column(nullable = false, length = 200)
+    @Column(name = "consumer_id", nullable = false)
+    private String consumerId;
+
+    @Column(name = "consumer_name")
     private String consumerName;
 
-    @Column(nullable = false, length = 200)
-    private String consumerNumber;
-
-    @Column(nullable = false, length = 200)
-    private String fileName;
-
-    @Column(length = 200)
-    private String vendor;
-
     @Enumerated(EnumType.STRING)
-    private BillCategory category;
+    @Column(name = "category", nullable = false, length = 32)
+    private BillCategory billCategory;
 
-    @Column(nullable = false, precision = 14, scale = 2)
-    private BigDecimal amount;
+    @Column(name = "provider_name", nullable = false)
+    private String providerName;
 
-    @Column(length = 3, nullable = false)
+    @Column(name = "service_number", nullable = false)
+    private String serviceNumber;
+
+    @Column(name = "billing_start_date")
+    private LocalDate billingStartDate;
+
+    @Column(name = "billing_end_date")
+    private LocalDate billingEndDate;
+
+    @Column(name = "amount_due", nullable = false, precision = 12, scale = 2)
+    private BigDecimal amountDue;
+
+    @Column(name = "currency", nullable = false, length = 3)
     private String currency;
 
     @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(name = "status", nullable = false)
     private BillStatus status;
 
-    // ===== Ingestion / AI =====
+    @Column(name = "payment_id")
+    private UUID paymentId;
+
     @Column(name = "ingested_at")
     private Instant ingestedAt;
 
     @Column(name = "chunk_count")
     private Integer chunkCount;
 
-    // ===== Auto-pay rule (NOT execution) =====
-    @Column(name = "auto_pay_enabled", nullable = false)
-    private Boolean autoPayEnabled = Boolean.FALSE;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "metadata", columnDefinition = "jsonb")
+    private Map<String, Object> metadata;
 
-    @Column(name = "auto_pay_day_of_month")
-    private Integer autoPayDayOfMonth;
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
-    // ===== Audit =====
-    @Column(name = "deleted", nullable = false)
-    private Boolean deleted = Boolean.FALSE;
-
-    @Column(name = "last_successful_payment_id", length = 100)
-    private String lastSuccessfulPaymentId;
-
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
     @PrePersist
-    void prePersist() {
-        Instant now = Instant.now();
-        createdAt = now;
-        updatedAt = now;
-        if (status == null) status = BillStatus.UPLOADED;
+    void onCreate() {
+        this.createdAt = Instant.now();
+        this.updatedAt = this.createdAt;
+
+        if (this.status == null) {
+            this.status = BillStatus.UPLOADED;
+        }
+
+        if (this.currency == null) {
+            this.currency = "INR";
+        }
+
+        if (this.chunkCount == null) {
+            this.chunkCount = 0;
+        }
     }
 
     @PreUpdate
-    void preUpdate() {
-        updatedAt = Instant.now();
+    void onUpdate() {
+        this.updatedAt = Instant.now();
     }
 }

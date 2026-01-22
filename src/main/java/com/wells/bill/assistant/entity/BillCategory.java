@@ -4,7 +4,10 @@ public enum BillCategory {
     ELECTRICITY,
     WATER,
     GAS,
-    INTERNET,
-    PHONE,
+    MOBILE,
+    BROADBAND,
+    DTH,
+    LPG,
+    MUNICIPAL,
     OTHER
 }

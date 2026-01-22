@@ -14,7 +14,7 @@ import java.util.UUID;
 @Setter
 public class PaymentResponse {
 
-    private String paymentId;
+    private UUID paymentId;
 
     private PaymentStatus status;
 

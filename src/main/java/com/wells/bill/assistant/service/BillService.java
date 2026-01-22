@@ -1,202 +1,195 @@
 package com.wells.bill.assistant.service;
 
-import com.wells.bill.assistant.entity.BillCategory;
 import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.BillStatus;
-import com.wells.bill.assistant.model.BillCreateResponse;
-import com.wells.bill.assistant.model.BillDetails;
-import com.wells.bill.assistant.model.BillSummary;
-import com.wells.bill.assistant.model.BillUpdateRequest;
+import com.wells.bill.assistant.model.BillDetail;
 import com.wells.bill.assistant.repository.BillRepository;
+import com.wells.bill.assistant.util.BillMapper;
+import com.wells.bill.assistant.util.BillStateMachine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
 @Service
-@Transactional
 @RequiredArgsConstructor
+@Transactional
 public class BillService {
 
     private final BillRepository billRepository;
 
-    /**
-     * Create a bill in UPLOADED state.
-     * No vector ingestion happens here.
-     */
-    @Transactional
-    public UUID createBill(BillDetails req) {
-        log.info("Creating bill for customerId={}", req.getCustomerId());
+    /* =====================================================
+     * 1️⃣ READ – Detail & Lists
+     * ===================================================== */
 
-        if (req.getCustomerId() == null) {
-            throw new IllegalArgumentException("customerId is required");
-        }
-
-        if (req.getConsumerName() == null || req.getConsumerName().isBlank()) {
-            throw new IllegalArgumentException("name is required");
-        }
-
-        BillEntity bill = createDomain(req);
-
-        BillEntity saved = billRepository.save(bill);
-
-        log.info("Bill Created with id= {}", saved.getId());
-        return saved.getId();
+    @Transactional(readOnly = true)
+    public BillDetail getBill(UUID billId) {
+        return BillMapper.toDetail(getEntityOrThrow(billId));
     }
 
-    /**
-     * Business updates only (no ingestion, no payments).
-     */
-    @Transactional
-    public BillCreateResponse updateBill(UUID id, BillUpdateRequest updates) {
-        BillEntity bill = getBillById(id);
-        if (updates.getName() != null) {
-            bill.setConsumerName(updates.getName());
-        }
-        if (updates.getVendor() != null) {
-            bill.setVendor(updates.getVendor());
-        }
-        if (updates.getCategory() != null) {
-            bill.setCategory(updates.getCategory());
-        }
-        if (updates.getStatus() != null) {
-            bill.setStatus(updates.getStatus());
-        }
-
-        log.info("Bill updated: id={}", bill.getId());
-        return toResponse(bill);
+    @Transactional(readOnly = true)
+    public Page<BillDetail> getBills(UUID userId, Pageable pageable) {
+        return billRepository.findByUserId(userId, pageable)
+                .map(BillMapper::toDetail);
     }
 
-    /**
-     * Mark bill PAID – invoked ONLY by PaymentExecutionService.
-     */
-    @Transactional
-    public void markPaid(UUID billId, String paymentId) {
-        BillEntity bill = getBillById(billId);
+    @Transactional(readOnly = true)
+    public List<BillDetail> getUnpaidBills(UUID userId) {
+        return billRepository.findByUserIdAndStatusIn(
+                        userId,
+                        Set.of(
+                                BillStatus.UPLOADED,
+                                BillStatus.INGESTED,
+                                BillStatus.VERIFIED,
+                                BillStatus.OVERDUE
+                        )
+                )
+                .stream()
+                .map(BillMapper::toDetail)
+                .toList();
+    }
+
+    /* =====================================================
+     * 2️⃣ CREATE / UPDATE / DELETE
+     * ===================================================== */
+
+    public BillDetail createBill(BillDetail request) {
+        BillEntity entity = BillMapper.toEntity(request);
+
+        // Enforce invariants
+        entity.setId(null);
+        entity.setStatus(BillStatus.UPLOADED);
+        entity.setPaymentId(null);
+
+        return BillMapper.toDetail(
+                billRepository.save(entity)
+        );
+    }
+
+    public BillDetail updateBill(UUID billId, BillDetail request) {
+        BillEntity existing = getEntityOrThrow(billId);
+
+        if (existing.getStatus() == BillStatus.PAID
+                || existing.getStatus() == BillStatus.CANCELLED) {
+            throw new IllegalStateException(
+                    "Cannot update bill in state: " + existing.getStatus()
+            );
+        }
+
+        // Allowed updates only
+        existing.setConsumerName(request.consumerName());
+        existing.setProviderName(request.providerName());
+        existing.setServiceNumber(request.serviceNumber());
+        existing.setBillingStartDate(request.billingStartDate());
+        existing.setBillingEndDate(request.billingEndDate());
+        existing.setDueDate(request.dueDate());
+        existing.setAmountDue(request.amountDue());
+        existing.setCurrency(request.currency());
+
+        return BillMapper.toDetail(
+                billRepository.save(existing)
+        );
+    }
+
+    public void deleteBill(UUID billId) {
+        BillEntity bill = getEntityOrThrow(billId);
 
         if (bill.getStatus() == BillStatus.PAID) {
-            return;
+            throw new IllegalStateException("Paid bill cannot be deleted");
         }
 
-        bill.setStatus(BillStatus.PAID);
-        bill.setLastSuccessfulPaymentId(paymentId);
+        BillStateMachine.validateTransition(
+                bill.getStatus(),
+                BillStatus.CANCELLED
+        );
 
-        log.info("Bill {} marked PAID via payment {}", billId, paymentId);
+        bill.setStatus(BillStatus.CANCELLED);
+        billRepository.save(bill);
     }
+
+    /* =====================================================
+     * 3️⃣ STATUS TRANSITIONS
+     * ===================================================== */
+
+    public BillDetail markIngested(UUID billId) {
+        return transition(billId, BillStatus.INGESTED);
+    }
+
+    public BillDetail markVerified(UUID billId) {
+        return transition(billId, BillStatus.VERIFIED);
+    }
+
+    public void markPaid(UUID billId, UUID paymentId) {
+        BillEntity bill = getEntityOrThrow(billId);
+
+        BillStateMachine.validateTransition(
+                bill.getStatus(),
+                BillStatus.PAID
+        );
+
+        bill.setPaymentId(paymentId);
+        bill.setStatus(BillStatus.PAID);
+
+        BillMapper.toDetail(
+                billRepository.save(bill)
+        );
+    }
+
+    /* =====================================================
+     * 4️⃣ OVERDUE SCHEDULER
+     * ===================================================== */
 
     /**
-     * Scheduled overdue update.
+     * Marks VERIFIED bills as OVERDUE when due date has passed.
+     * Intended for scheduler use.
      */
-    @Transactional
     public void updateOverdue() {
         LocalDate today = LocalDate.now();
-        List<BillEntity> overdueBills = billRepository
-                .findByStatusAndDueDateBefore(BillStatus.VERIFIED, today);
 
-        overdueBills.forEach(bill -> {
-            bill.setStatus(BillStatus.OVERDUE);
-            log.warn("Bill {} marked OVERDUE", bill.getId());
-        });
+        billRepository.findByDueDateBefore(today).stream()
+                .filter(b -> b.getStatus() == BillStatus.VERIFIED)
+                .forEach(bill -> {
+                    BillStateMachine.validateTransition(
+                            bill.getStatus(),
+                            BillStatus.OVERDUE
+                    );
+                    bill.setStatus(BillStatus.OVERDUE);
+                    log.warn("Bill {} marked OVERDUE", bill.getId());
+                });
     }
 
-    @Transactional(readOnly = true)
-    public BillEntity getBillById(UUID id) {
-        log.info("Fetching bill entity for id={}", id);
-        return billRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Bill not found: " + id));
+    /* =====================================================
+     * Internal Helpers
+     * ===================================================== */
+
+    private BillDetail transition(UUID billId, BillStatus next) {
+        BillEntity bill = getEntityOrThrow(billId);
+
+        BillStateMachine.validateTransition(
+                bill.getStatus(),
+                next
+        );
+
+        bill.setStatus(next);
+        return BillMapper.toDetail(
+                billRepository.save(bill)
+        );
     }
 
-    @Transactional(readOnly = true)
-    public List<BillSummary> listByStatus(BillStatus status) {
-        log.info("Listing bills with status={}", status.name());
-        return billRepository.findByStatus(status)
-                .stream()
-                .map(this::toSummary)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<BillSummary> findAllUnpaid() {
-        log.info("Listing all unpaid bills");
-        return billRepository
-                .findByStatusIn(List.of(BillStatus.VERIFIED, BillStatus.OVERDUE))
-                .stream()
-                .map(this::toSummary)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<BillSummary> findByDueDateRange(LocalDate start, LocalDate end) {
-        log.info("Finding bills due between {} and {}", start, end);
-        return billRepository
-                .findByDueDateBetween(start, end)
-                .stream()
-                .map(this::toSummary)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<BillSummary> findUnpaidByDueDateRange(LocalDate start, LocalDate end) {
-        log.info("Finding unpaid bills due between {} and {}", start, end);
-        return billRepository
-                .findByDueDateBetweenAndStatusIn(
-                        start,
-                        end,
-                        List.of(BillStatus.VERIFIED, BillStatus.OVERDUE)
-                )
-                .stream()
-                .map(this::toSummary)
-                .toList();
-    }
-
-    @Transactional(readOnly = true)
-    public List<BillSummary> findByDueDateAfterAndStatusIn(LocalDate start) {
-        log.info("Finding unpaid bills due after: {}", start);
-        return billRepository
-                .findByDueDateAfterAndStatusIn(
-                        start,
-                        List.of(BillStatus.VERIFIED, BillStatus.OVERDUE)
-                )
-                .stream()
-                .map(this::toSummary)
-                .toList();
-    }
-
-    public BillSummary getBillSummary(UUID id) {
-        log.info("Fetching bill summary for id={}", id);
-        return toSummary(getBillById(id));
-    }
-
-    private BillCreateResponse toResponse(BillEntity bill) {
-        BillCreateResponse response = new BillCreateResponse();
-        BeanUtils.copyProperties(bill, response);
-        return response;
-    }
-
-    private BillSummary toSummary(BillEntity bill) {
-        return BillSummary.from(bill);
-    }
-
-    private static BillEntity createDomain(BillDetails req) {
-        BillEntity bill = new BillEntity();
-        bill.setCustomerId(req.getCustomerId());
-        bill.setConsumerName(req.getConsumerName());
-        bill.setConsumerNumber(req.getConsumerNumber());
-        bill.setFileName(req.getFileName());
-        bill.setAmount(req.getAmount());
-        bill.setCurrency("INR");
-        bill.setStatus(BillStatus.UPLOADED);
-        bill.setDueDate(req.getDueDate());
-        bill.setVendor(req.getVendor());
-        bill.setCategory(req.getCategory() == null ? BillCategory.OTHER : req.getCategory());
-        bill.setAutoPayEnabled(Boolean.TRUE.equals(req.getAutoPayEnabled()));
-        bill.setStatus(BillStatus.UPLOADED);
-        return bill;
+    private BillEntity getEntityOrThrow(UUID billId) {
+        return billRepository.findById(billId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Bill not found: " + billId
+                        )
+                );
     }
 }

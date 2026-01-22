@@ -14,35 +14,21 @@ import java.util.regex.Pattern;
 @Component
 public class IntentResolver {
 
-    private static final Pattern BILL_ID_PATTERN =
-            Pattern.compile("\\b(bill[-_ ]?\\d+)\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern BILL_ID_PATTERN = Pattern.compile("\\b(bill[-_ ]?\\d+)\\b", Pattern.CASE_INSENSITIVE);
 
-    private static final Pattern AMOUNT_PATTERN =
-            Pattern.compile("(₹|rs\\.?|inr)?\\s*(\\d+(\\.\\d{1,2})?)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern AMOUNT_PATTERN = Pattern.compile("(₹|rs\\.?|inr)?\\s*(\\d+(\\.\\d{1,2})?)", Pattern.CASE_INSENSITIVE);
 
-    private static final Set<String> CONFIRMATION_KEYWORDS =
-            Set.of("yes", "confirm", "proceed", "go ahead", "ok", "okay");
+    private static final Set<String> CONFIRMATION_KEYWORDS = Set.of("yes", "confirm", "proceed", "go ahead", "ok", "okay");
 
-    private static final Pattern DATE_PATTERN =
-            Pattern.compile("\\b(\\d{4}-\\d{2}-\\d{2})\\b");
+    private static final Pattern DATE_PATTERN = Pattern.compile("\\b(\\d{4}-\\d{2}-\\d{2})\\b");
 
     public Intent resolve(ChatRequest request, ConversationState state) {
 
-        String message = request.getMessage().trim().toLowerCase();
+        String message = request.getUserMessage().trim().toLowerCase();
 
         // 1️⃣ Confirmation intent (only when awaiting confirmation)
         if (state == ConversationState.AWAITING_CONFIRMATION && isConfirmation(message)) {
             return new ConfirmPaymentIntent(request.getConversationId());
-        }
-
-        // 2️⃣ Scheduled payment
-        if (containsPaymentKeyword(message) && containsDate(message)) {
-            return new SchedulePaymentIntent(
-                    request.getUserId(),
-                    extractBillId(message).orElse(null),
-                    extractDate(message),
-                    extractAmount(message)
-            );
         }
 
         // 3️⃣ Initiate payment intent (only from IDLE)

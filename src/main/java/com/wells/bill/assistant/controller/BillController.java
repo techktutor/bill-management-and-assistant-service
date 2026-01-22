@@ -1,16 +1,14 @@
 package com.wells.bill.assistant.controller;
 
-import com.wells.bill.assistant.entity.BillStatus;
-import com.wells.bill.assistant.model.BillCreateResponse;
-import com.wells.bill.assistant.model.BillSummary;
-import com.wells.bill.assistant.model.BillUpdateRequest;
+import com.wells.bill.assistant.model.BillDetail;
 import com.wells.bill.assistant.service.BillService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,54 +20,87 @@ public class BillController {
 
     private final BillService billService;
 
-    // -----------------------------
-    // Get Bill by ID
-    // -----------------------------
+    /* =====================================================
+     * 1️⃣ Bill Detail
+     * ===================================================== */
+
     @GetMapping("/{billId}")
-    public ResponseEntity<BillSummary> getBill(@PathVariable UUID billId) {
-        return ResponseEntity.ok(billService.getBillSummary(billId));
+    public ResponseEntity<BillDetail> getBill(@PathVariable UUID billId) {
+        return ResponseEntity.ok(billService.getBill(billId));
     }
 
-    // -----------------------------
-    // List Bills by Status
-    // -----------------------------
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<BillSummary>> listByStatus(@PathVariable String status) {
-        BillStatus billStatus = BillStatus.valueOf(status.toUpperCase());
-        return ResponseEntity.ok(billService.listByStatus(billStatus));
+    /* =====================================================
+     * 2️⃣ List Bills (Detail DTO, paged)
+     * ===================================================== */
+
+    @GetMapping
+    public ResponseEntity<Page<BillDetail>> listBills(
+            @RequestParam UUID userId,
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(
+                billService.getBills(userId, pageable)
+        );
     }
 
-    // -----------------------------
-    // Update Bill
-    // -----------------------------
-    @PutMapping("/{billId}")
-    public ResponseEntity<BillCreateResponse> updateBill(@PathVariable UUID billId, @RequestBody BillUpdateRequest req) {
-        return ResponseEntity.ok(billService.updateBill(billId, req));
-    }
+    /* =====================================================
+     * 3️⃣ List Unpaid Bills
+     * ===================================================== */
 
-    // -----------------------------
-    // List Upcoming Unpaid Bills (Next 7 Days)
-    // -----------------------------
-    @GetMapping("/upcoming")
-    public ResponseEntity<List<BillSummary>> upcoming() {
-        LocalDate now = LocalDate.now();
-        return ResponseEntity.ok(billService.findByDueDateAfterAndStatusIn(now));
-    }
-
-    // -----------------------------
-    // List All Unpaid Bills
-    // -----------------------------
     @GetMapping("/unpaid")
-    public ResponseEntity<List<BillSummary>> unpaid() {
-        return ResponseEntity.ok(billService.findAllUnpaid());
+    public ResponseEntity<List<BillDetail>> getUnpaidBills(
+            @RequestParam UUID userId
+    ) {
+        return ResponseEntity.ok(
+                billService.getUnpaidBills(userId)
+        );
     }
 
-    // -----------------------------
-    // Force Overdue Update (Dev Only)
-    // -----------------------------
+    /* =====================================================
+     * 4️⃣ Create Bill
+     * ===================================================== */
+
+    @PostMapping
+    public ResponseEntity<BillDetail> createBill(
+            @RequestBody BillDetail request
+    ) {
+        return ResponseEntity.ok(
+                billService.createBill(request)
+        );
+    }
+
+    /* =====================================================
+     * 5️⃣ Update Bill
+     * ===================================================== */
+
+    @PutMapping("/{billId}")
+    public ResponseEntity<BillDetail> updateBill(
+            @PathVariable UUID billId,
+            @RequestBody BillDetail request
+    ) {
+        return ResponseEntity.ok(
+                billService.updateBill(billId, request)
+        );
+    }
+
+    /* =====================================================
+     * 6️⃣ Delete Bill
+     * ===================================================== */
+
+    @DeleteMapping("/{billId}")
+    public ResponseEntity<Void> deleteBill(@PathVariable UUID billId) {
+        billService.deleteBill(billId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /* =====================================================
+     * 7️⃣ Scheduler / System
+     * ===================================================== */
+
     @PostMapping("/overdue/run")
     public ResponseEntity<String> runOverdueUpdate() {
         billService.updateOverdue();
         return ResponseEntity.ok("Overdue bills updated");
     }
 }
+

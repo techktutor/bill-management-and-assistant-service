@@ -41,7 +41,7 @@ public class BillControllerIntegrationTest {
         req.setConsumerNumber("1234567890");
         req.setAmount(new BigDecimal("120.50"));
         req.setCurrency("USD");
-        req.setStatus(BillStatus.INGESTING);
+        req.setStatus(BillStatus.INGESTED);
         req.setDueDate(LocalDate.now().plusDays(5));
         req.setCategory(BillCategory.ELECTRICITY);
         req.setVendor("Power Company");

@@ -1,0 +1,41 @@
+package com.wells.bill.assistant.util;
+
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+
+import java.time.Duration;
+import java.util.UUID;
+
+public final class CookieGenerator {
+
+    public static final String CONTEXT_COOKIE = "CTX_ID";
+
+    public static String getContextKey(String contextKey, HttpServletResponse response) {
+        if (contextKey == null) {
+            contextKey = UUID.randomUUID().toString();
+
+            Cookie cookie = new Cookie(CONTEXT_COOKIE, contextKey);
+            cookie.setHttpOnly(true);
+            cookie.setPath("/");
+            response.addCookie(cookie);
+
+            // ✅ Production-Ready Cookie Code
+            //addContextCookie(response, contextKey);
+        }
+        return contextKey;
+    }
+
+    // ✅ Production-Ready Cookie Code
+    private void addContextCookie(HttpServletResponse response, String contextKey) {
+        ResponseCookie cookie = ResponseCookie.from("CTX_ID", contextKey)
+                .httpOnly(true)
+                .secure(true) // MUST be true in production
+                .sameSite("None") // Required for cross-site
+                .path("/")
+                .maxAge(Duration.ofDays(1))
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+}

@@ -5,22 +5,24 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChatRequest {
 
-    @NotBlank(message = "conversationId is required and cannot be blank")
-    private String conversationId;
+    @NotBlank(message = "ConversationId is required and cannot be blank")
+    private UUID conversationId;
 
-    @NotBlank(message = "message is required and cannot be blank")
-    private String message;
+    @NotBlank(message = "Message is required and cannot be blank")
+    private String userMessage;
 
-    private String userId;
-    private String merchantId;
+    @NotBlank(message = "Message is required and cannot be blank")
+    private UUID userId;
 
-    public ChatRequest(String conversationId, String message) {
+    public ChatRequest(UUID conversationId, String userMessage) {
         this.conversationId = conversationId;
-        this.message = message;
+        this.userMessage = userMessage;
     }
 }

@@ -1,46 +1,77 @@
 package com.wells.bill.assistant.repository;
 
+import com.wells.bill.assistant.entity.BillCategory;
 import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.BillStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface BillRepository extends JpaRepository<BillEntity, UUID> {
     List<BillEntity> findByDueDateBetween(LocalDate start, LocalDate end);
-
-    List<BillEntity> findByDueDateBetweenAndStatusIn(
-            LocalDate start,
-            LocalDate end,
-            List<BillStatus> statusList
-    );
-
-    List<BillEntity> findByDueDateAfterAndStatusIn(
-            LocalDate start,
-            List<BillStatus> statusList
-    );
-
-    List<BillEntity> findByCustomerId(UUID customerId);
-
-    List<BillEntity> findByCustomerIdAndStatusIn(
-            UUID customerId,
-            List<BillStatus> statuses
+    List<BillEntity> findByStatusAndDueDateBefore(
+            BillStatus status,
+            LocalDate date
     );
 
     List<BillEntity> findByStatusIn(List<BillStatus> statuses);
 
-    List<BillEntity> findByCustomerIdAndDueDateBetween(
-            UUID customerId,
-            LocalDate start,
-            LocalDate end
-    );
+    List<BillEntity> findByDueDateBefore(LocalDate date);
 
-    List<BillEntity> findByStatus(BillStatus status);
+    List<BillEntity> findByDueDateAfter(LocalDate date);
 
-    List<BillEntity> findByStatusAndDueDateBefore(BillStatus status, LocalDate date);
-    List<BillEntity> findByStatusAndDueDateAfter(BillStatus status, LocalDate date);
+    Page<BillEntity> findByUserId(UUID userId, Pageable pageable);
+
+    List<BillEntity> findByUserIdAndStatusIn(UUID userId, Collection<BillStatus> statuses);
+
+    @Query("""
+            SELECT b
+            FROM BillEntity b
+            WHERE b.userId = :userId
+              AND b.status <> com.wells.bill.assistant.entity.BillStatus.PAID
+              AND b.dueDate < :today
+            ORDER BY b.dueDate ASC
+            """)
+    List<BillEntity> findOverdueBills(UUID userId, LocalDate today);
+
+    List<BillEntity> findByPaymentId(UUID paymentId);
+
+    @Query("""
+            SELECT b
+            FROM BillEntity b
+            WHERE b.userId = :userId
+              AND b.status <> com.wells.bill.assistant.entity.BillStatus.PAID
+              AND b.dueDate BETWEEN :start AND :end
+            ORDER BY b.dueDate ASC
+            """)
+    List<BillEntity> findBillsDueSoon(UUID userId, LocalDate start, LocalDate end);
+
+    @Query("""
+            SELECT b.billCategory, SUM(b.amountDue)
+            FROM BillEntity b
+            WHERE b.userId = :userId
+              AND b.billingEndDate BETWEEN :start AND :end
+            GROUP BY b.billCategory
+            """)
+    List<Object[]> getSpendByCategory(UUID userId, LocalDate start, LocalDate end);
+
+    @Query("""
+            SELECT COALESCE(SUM(b.amountDue), 0)
+            FROM BillEntity b
+            WHERE b.userId = :userId
+              AND b.status <> com.wells.bill.assistant.entity.BillStatus.PAID
+              AND b.dueDate < :today
+            """)
+    BigDecimal getTotalOverdueAmount(UUID userId, LocalDate today);
+
+    List<BillEntity> findByBillCategory(BillCategory category);
 }

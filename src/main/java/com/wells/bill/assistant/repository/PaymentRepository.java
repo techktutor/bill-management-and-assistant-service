@@ -16,16 +16,11 @@ public interface PaymentRepository extends JpaRepository<PaymentEntity, UUID> {
 
     Optional<PaymentEntity> findByIdempotencyKey(String idempotencyKey);
 
-    // FIXED: paymentId is a String
-    Optional<PaymentEntity> findByPaymentId(String paymentId);
-
-    List<PaymentEntity> findByStatusAndScheduledDateLessThanEqual(
-            PaymentStatus paymentStatus,
-            LocalDate asOfDate
-    );
-
     List<PaymentEntity> findByPaymentTypeAndStatusAndScheduledDateLessThanEqual(
             PaymentType paymentType,
             PaymentStatus paymentStatus,
             LocalDate asOfDate);
+
+    List<PaymentEntity> findByUserId(UUID customerId);
+
 }

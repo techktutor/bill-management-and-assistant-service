@@ -16,6 +16,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.UUID;
+
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -51,7 +53,7 @@ public class ChatControllerIntegrationTest {
         Mockito.when(orchestrator.processMessage(ArgumentMatchers.any(ChatRequest.class)))
                 .thenReturn("Hi there!");
 
-        ChatRequest req = new ChatRequest("c1", "hello");
+        ChatRequest req = new ChatRequest(UUID.randomUUID(), "hello");
 
         mvc.perform(post("/api/chat")
                         .contentType(MediaType.APPLICATION_JSON)

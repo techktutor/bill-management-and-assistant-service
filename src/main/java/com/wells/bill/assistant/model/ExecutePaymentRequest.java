@@ -11,21 +11,15 @@ import java.util.UUID;
 public class ExecutePaymentRequest {
 
     @NotBlank
-    private String executedBy;
+    private ExecutedBy executedBy;
 
-    private String gatewayIdempotencyKey;
     /**
      * Payment intent ID to execute (e.g., pay_xxx).
      */
-    private String paymentId;
+    private UUID paymentId;
 
     /**
      * The customer initiating the execution.
      */
-    private UUID customerId;
-
-    /**
-     * Tokenized card reference such as tok_xxx or card_xxx.
-     */
-    private String cardToken;
+    private UUID userId;
 }

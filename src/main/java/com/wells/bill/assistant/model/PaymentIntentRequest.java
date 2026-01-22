@@ -1,9 +1,9 @@
 package com.wells.bill.assistant.model;
 
-import com.wells.bill.assistant.entity.PaymentType;
 import lombok.Getter;
 import lombok.Setter;
 
+import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -11,21 +11,16 @@ import java.util.UUID;
 @Getter
 @Setter
 public class PaymentIntentRequest {
-
-    private UUID customerId;
-
+    @NotNull(message = "userId is required")
+    private UUID userId;
+    @NotNull(message = "billId is required")
     private UUID billId;
-
-    private UUID merchantId;
-
+    @NotNull(message = "amount is required")
     private BigDecimal amount;
-
-    private String currency = "USD";
-
+    @NotNull(message = "currency is required")
+    private String currency;
+    @NotNull(message = "idempotencyKey is required")
     private String idempotencyKey;
-
     private LocalDate scheduledDate;
-
-    private PaymentType paymentType;
-    private String approvalSource;
+    private ExecutedBy executedBy;
 }

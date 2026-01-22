@@ -16,6 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.wells.bill.assistant.model.ConversationState.PAYMENT_INTENT_ALLOWED;
+import static com.wells.bill.assistant.util.CustomPromptTemple.INSTRUCTION;
 
 @Slf4j
 @Service
@@ -23,12 +24,6 @@ import static com.wells.bill.assistant.model.ConversationState.PAYMENT_INTENT_AL
 public class OrchestratorService {
 
     private static final String DEFAULT_RESPONSE = "I’m sorry, I couldn’t process your request safely. Please try again.";
-    private static final String SYSTEM_PROMPT = """
-                    You are a helpful AI Bill Assistant and Your name is Eagle.
-                    Always identify yourself as Eagle and welcome the user with greetings.
-                    Your task is to analyze retrieved bills or invoices and return structured, accurate information.
-                    If anything else apart from bill/invoice related, politely decline saying ask anything related to your bills only.
-            """;
 
     // ---------------------------------------------------------------------
     // Dependencies
@@ -48,12 +43,11 @@ public class OrchestratorService {
     // Entry point
     // ---------------------------------------------------------------------
     public String processMessage(ChatRequest request) {
-        String conversationId = request.getConversationId();
-        String userId = request.getUserId();
-        String merchantId = request.getMerchantId();
-        String userMessage = request.getMessage();
+        String conversationId = String.valueOf(request.getConversationId());
+        String userId = String.valueOf(request.getUserId());
+        String userMessage = request.getUserMessage();
         try {
-            log.info("Processing ChatRequest Message: conversationId= {} message= {}", conversationId, userMessage);
+            log.info("Processing request for conversationId= {}, message= {}", conversationId, userMessage);
 
             // 1️⃣ Load conversation state
             ConversationContext context = stateStore.load(conversationId, userId);
@@ -117,7 +111,6 @@ public class OrchestratorService {
             String response = chatClient
                     .prompt()
                     .tools(tools)
-                    .system(SYSTEM_PROMPT)
                     .user(userMessage)
                     .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, conversationId))
                     .call()

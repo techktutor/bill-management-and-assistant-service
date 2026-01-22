@@ -23,8 +23,8 @@ public record BillSummary(UUID id, String name, String vendor, BigDecimal amount
         return BillSummary.builder()
                 .id(bill.getId())
                 .name(bill.getConsumerName())
-                .vendor(bill.getVendor())
-                .amount(bill.getAmount())
+                .vendor(bill.getProviderName())
+                .amount(bill.getAmountDue())
                 .currency(
                         bill.getCurrency() != null
                                 ? bill.getCurrency()
@@ -32,8 +32,7 @@ public record BillSummary(UUID id, String name, String vendor, BigDecimal amount
                 )
                 .dueDate(bill.getDueDate())
                 .status(bill.getStatus())
-                .category(bill.getCategory())
-                .autoPayEnabled(Boolean.TRUE.equals(bill.getAutoPayEnabled()))
+                .category(bill.getBillCategory())
                 .build();
     }
 

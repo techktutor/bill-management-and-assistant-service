@@ -14,7 +14,7 @@ import java.util.UUID;
 @Getter
 public class PaymentIntentResponse {
 
-    private String paymentId;
+    private UUID paymentId;
 
     private String idempotencyKey;
 

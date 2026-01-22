@@ -1,3 +1,5 @@
 package com.wells.bill.assistant.model;
 
-public record ConfirmPaymentIntent(String conversationId) implements Intent {}
+import java.util.UUID;
+
+public record ConfirmPaymentIntent(UUID conversationId) implements Intent {}
