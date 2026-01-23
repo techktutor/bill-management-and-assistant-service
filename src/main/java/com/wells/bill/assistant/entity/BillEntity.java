@@ -1,5 +1,6 @@
 package com.wells.bill.assistant.entity;
 
+import com.wells.bill.assistant.model.DataQualityDecision;
 import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -44,7 +45,7 @@ public class BillEntity {
     private UUID userId;
 
     @Column(name = "consumer_id", nullable = false)
-    private String consumerId;
+    private String consumerNumber;
 
     @Column(name = "consumer_name")
     private String consumerName;
@@ -56,7 +57,7 @@ public class BillEntity {
     @Column(name = "provider_name", nullable = false)
     private String providerName;
 
-    @Column(name = "service_number", nullable = false)
+    @Column(name = "service_number")
     private String serviceNumber;
 
     @Column(name = "billing_start_date")
@@ -83,6 +84,13 @@ public class BillEntity {
 
     @Column(name = "ingested_at")
     private Instant ingestedAt;
+
+    @Column(name = "confidence_score", precision = 5, scale = 2)
+    private Integer confidenceScore;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "confidence_decision", length = 32)
+    private DataQualityDecision confidenceDecision;
 
     @Column(name = "chunk_count")
     private Integer chunkCount;

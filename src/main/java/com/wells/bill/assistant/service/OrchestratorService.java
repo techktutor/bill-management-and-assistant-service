@@ -1,7 +1,6 @@
 package com.wells.bill.assistant.service;
 
-import com.wells.bill.assistant.model.*;
-import com.wells.bill.assistant.store.ConversationStateStore;
+import com.wells.bill.assistant.model.ChatRequest;
 import com.wells.bill.assistant.tools.BillAssistantTool;
 import com.wells.bill.assistant.tools.PaymentAssistantTool;
 import lombok.RequiredArgsConstructor;
@@ -10,13 +9,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static com.wells.bill.assistant.model.ConversationState.PAYMENT_INTENT_ALLOWED;
-import static com.wells.bill.assistant.util.CustomPromptTemple.INSTRUCTION;
+import static com.wells.bill.assistant.util.CustomPromptTemple.systemPrompt;
 
 @Slf4j
 @Service
@@ -25,23 +18,11 @@ public class OrchestratorService {
 
     private static final String DEFAULT_RESPONSE = "I’m sorry, I couldn’t process your request safely. Please try again.";
 
-    // ---------------------------------------------------------------------
-    // Dependencies
-    // ---------------------------------------------------------------------
     private final ChatClient chatClient;
 
     private final BillAssistantTool billAssistantTool;
     private final PaymentAssistantTool paymentAssistantTool;
 
-    private final RagEngineService ragEngineService;
-
-    private final IntentResolver intentResolver;
-    private final ConversationStateStore stateStore;
-    private final PaymentGuardService paymentGuardService;
-
-    // ---------------------------------------------------------------------
-    // Entry point
-    // ---------------------------------------------------------------------
     public String processMessage(ChatRequest request) {
         String conversationId = String.valueOf(request.getConversationId());
         String userId = String.valueOf(request.getUserId());
@@ -49,69 +30,13 @@ public class OrchestratorService {
         try {
             log.info("Processing request for conversationId= {}, message= {}", conversationId, userMessage);
 
-            // 1️⃣ Load conversation state
-            ConversationContext context = stateStore.load(conversationId, userId);
-
-            // 2️⃣ Resolve intent (deterministic)
-            Intent intent = intentResolver.resolve(request, context.state());
-
-            // 3️⃣ Evaluate payment guard (state machine authority)
-            GuardResult guardResult = paymentGuardService.evaluate(context, intent);
-
-            // 4️⃣ Apply state transition
-            ConversationContext updatedContext = context.apply(guardResult);
-
-            stateStore.save(updatedContext, Duration.ofMinutes(10));
-
-            // 5️⃣ Block / ask-for-confirmation short-circuit
-            if (!guardResult.isAllowed()) {
-                log.info("Guard blocked or requires confirmation: conversationId={} message={}", conversationId, userMessage);
-                return guardResult.userMessage();
-            }
-
-            // =============================================================
-            // 6️⃣ Deterministic RAG (bill-scoped, advisory only)
-            // =============================================================
-            UUID billId = extractBillId(userMessage);
-            if (billId != null && intent instanceof QueryBillsIntent) {
-                log.info("Invoking Custom RAG Engine for billId= {} conversationId= {}", billId, conversationId);
-                RagAnswer ragAnswer = ragEngineService.answerBillQuestion(
-                        conversationId,
-                        billId.toString(),
-                        userMessage
-                );
-
-                if (!ragAnswer.grounded()) {
-                    log.info("RAG Engine answer blocked (confidence= {} billId= {})", ragAnswer.confidence(), billId);
-                    return ragAnswer.answer();
-                }
-                log.info("RAG Engine answer provided (confidence= {} billId= {})", ragAnswer.confidence(), billId);
-                return ragAnswer.answer();
-            }
-
-            // =============================================================
-            // 7️⃣ DETERMINISTIC PAYMENT TOOL EXECUTION (NO LLM)
-            // =============================================================
-            if (intent instanceof ConfirmPaymentIntent && updatedContext.state() == PAYMENT_INTENT_ALLOWED) {
-                log.info("Executing confirmed payment intent for conversationId= {}", conversationId);
-
-                PendingPayment pending = updatedContext.pendingPayment();
-                if (pending == null) {
-                    throw new IllegalStateException("Confirmed payment without PendingPayment in context");
-                }
-            }
-
-            // =============================================================
-            // 8️⃣ LLM FALLBACK (conversation only, no critical actions)
-            // =============================================================
             Object[] tools = new Object[]{billAssistantTool, paymentAssistantTool};
-
-            log.info("Invoking LLM fallback for conversationId= {}", conversationId);
 
             String response = chatClient
                     .prompt()
-                    .tools(tools)
+                    .system(systemPrompt(userId))
                     .user(userMessage)
+                    .tools(tools)
                     .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, conversationId))
                     .call()
                     .content();
@@ -128,23 +53,5 @@ public class OrchestratorService {
             log.error("Error processing message for conversationId={}", conversationId, e);
             return DEFAULT_RESPONSE;
         }
-    }
-
-    // ---------------------------------------------------------------------
-    // Deterministic billId extraction (UUID only)
-    // ---------------------------------------------------------------------
-    private UUID extractBillId(String msg) {
-        if (msg == null) {
-            return null;
-        }
-
-        Pattern pattern = Pattern.compile(
-                "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-" +
-                        "[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-" +
-                        "[0-9a-fA-F]{12}"
-        );
-
-        Matcher matcher = pattern.matcher(msg);
-        return matcher.find() ? UUID.fromString(matcher.group()) : null;
     }
 }

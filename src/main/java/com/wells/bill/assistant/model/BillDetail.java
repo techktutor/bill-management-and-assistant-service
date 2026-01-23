@@ -13,7 +13,7 @@ public record BillDetail(
         UUID userId,
 
         // Consumer / Provider
-        String consumerId,
+        String consumerNumber,
         String consumerName,
         String providerName,
         String serviceNumber,
@@ -38,7 +38,11 @@ public record BillDetail(
 
         // Audit
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+
+        // Confidence Score
+        Integer confidenceScore,
+        DataQualityDecision confidenceDecision
 ) {
 
     /* ---------- Defaults & validation ---------- */
@@ -60,7 +64,7 @@ public record BillDetail(
         private UUID id;
         private UUID userId;
 
-        private String consumerId;
+        private String consumerNumber;
         private String consumerName;
         private String providerName;
         private String serviceNumber;
@@ -81,6 +85,8 @@ public record BillDetail(
 
         private final Instant createdAt = Instant.now();
         private Instant updatedAt = Instant.now();
+        private Integer confidenceScore;
+        private DataQualityDecision confidenceDecision;
 
         private Builder() {
         }
@@ -95,8 +101,8 @@ public record BillDetail(
             return this;
         }
 
-        public Builder consumerId(String consumerId) {
-            this.consumerId = consumerId;
+        public Builder consumerNumber(String consumerNumber) {
+            this.consumerNumber = consumerNumber;
             return this;
         }
 
@@ -165,11 +171,21 @@ public record BillDetail(
             return this;
         }
 
+        public Builder confidenceScore(Integer confidenceScore) {
+            this.confidenceScore = confidenceScore;
+            return this;
+        }
+
+        public Builder confidenceDecision(DataQualityDecision confidenceDecision) {
+            this.confidenceDecision = confidenceDecision;
+            return this;
+        }
+
         public BillDetail build() {
             return new BillDetail(
                     id,
                     userId,
-                    consumerId,
+                    consumerNumber,
                     consumerName,
                     providerName,
                     serviceNumber,
@@ -184,7 +200,9 @@ public record BillDetail(
                     ingestedAt,
                     chunkCount,
                     createdAt,
-                    updatedAt
+                    updatedAt,
+                    confidenceScore,
+                    confidenceDecision
             );
         }
     }

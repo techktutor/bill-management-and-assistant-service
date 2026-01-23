@@ -12,7 +12,7 @@ public final class BillMapper {
         return new BillDetail(
                 b.getId(),
                 b.getUserId(),
-                b.getConsumerId(),
+                b.getConsumerNumber(),
                 b.getConsumerName(),
                 b.getProviderName(),
                 b.getServiceNumber(),
@@ -27,7 +27,9 @@ public final class BillMapper {
                 b.getIngestedAt(),
                 b.getChunkCount(),
                 b.getCreatedAt(),
-                b.getUpdatedAt()
+                b.getUpdatedAt(),
+                b.getConfidenceScore(),
+                b.getConfidenceDecision()
         );
     }
 
@@ -35,7 +37,7 @@ public final class BillMapper {
         BillEntity b = new BillEntity();
 
         b.setUserId(d.userId());
-        b.setConsumerId(d.consumerId());
+        b.setConsumerNumber(d.consumerNumber());
         b.setConsumerName(d.consumerName());
         b.setProviderName(d.providerName());
         b.setServiceNumber(d.serviceNumber());
@@ -45,6 +47,8 @@ public final class BillMapper {
         b.setDueDate(d.dueDate());
         b.setAmountDue(d.amountDue());
         b.setCurrency(d.currency());
+        b.setConfidenceScore(d.confidenceScore());
+        b.setConfidenceDecision(d.confidenceDecision());
 
         return b;
     }

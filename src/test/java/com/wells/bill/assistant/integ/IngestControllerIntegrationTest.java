@@ -1,6 +1,7 @@
 package com.wells.bill.assistant.integ;
 
 import com.wells.bill.assistant.model.BillDetail;
+import com.wells.bill.assistant.model.BillParseResult;
 import com.wells.bill.assistant.service.BillParser;
 import com.wells.bill.assistant.service.IngestionService;
 import org.junit.jupiter.api.Test;
@@ -19,10 +20,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -70,12 +71,13 @@ public class IngestControllerIntegrationTest {
                 .amountDue(new BigDecimal("818.50"))   // partial data (LLM may enrich later)
                 .dueDate(LocalDate.now())
                 .consumerName("Ramesh Kumar")
-                .consumerId("12345678901")
+                .consumerNumber("12345678901")
                 .build();
 
-        Mockito.when(billParser.parse(anyString(), any(UUID.class))).thenReturn(details);
+        BillParseResult parseResult = BillParseResult.builder().bill(details).build();
+        Mockito.when(billParser.parse(anyString())).thenReturn(parseResult);
 
-        Mockito.when(mockIngestionService.ingestFile(any(UUID.class), any(MultipartFile.class))).thenReturn(4);
+        Mockito.when(mockIngestionService.ingestFile(any(UUID.class), anyList())).thenReturn(4);
 
         mvc.perform(multipart("/api/ingest/file").file(file))
                 .andExpect(status().isOk())

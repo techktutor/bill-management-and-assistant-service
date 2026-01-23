@@ -16,10 +16,14 @@ spring:
   jpa:
     defer-datasource-initialization: true
     hibernate:
-      ddl-auto: update
+      ddl-auto: create-drop
   sql:
     init:
       mode: ALWAYS
+  jackson:
+    mapper:
+      accept-case-insensitive-enums: true
+
   # ====================================================================
   # 2. SPRING AI CONFIGURATION
   # ====================================================================

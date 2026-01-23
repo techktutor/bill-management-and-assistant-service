@@ -3,7 +3,6 @@ package com.wells.bill.assistant.service;
 import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.entity.BillStatus;
 import com.wells.bill.assistant.repository.BillRepository;
-import com.wells.bill.assistant.util.TextExtractor;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,7 +10,6 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.List;
@@ -31,7 +29,7 @@ public class IngestionService {
      * Ingests a bill document and links vector chunks to BillEntity.
      */
     @Transactional
-    public int ingestFile(UUID billId, MultipartFile file) {
+    public int ingestFile(UUID billId, List<Document> documents) {
         log.info("Starting ETL ingestion for bill: {}", billId);
 
         BillEntity bill = billRepository.findById(billId)
@@ -41,20 +39,32 @@ public class IngestionService {
             throw new IllegalStateException("Bill not in UPLOADED state");
         }
 
+        bill.setStatus(BillStatus.INGESTING);
         try {
-            List<Document> documents = TextExtractor.extractTextDocuments(file);
-
             Instant now = Instant.now();
-
             int idx = 0;
+
             for (Document chunk : documents) {
                 Map<String, Object> metadata = chunk.getMetadata();
-                metadata.put("bill_id", bill.getId().toString());
-                metadata.put("customer_id", bill.getUserId().toString());
-                metadata.put("chunk_index", idx++);
-                metadata.put("ingested_at", now.toString());
-                metadata.put("source_type", file.getContentType());
-                metadata.put("original_filename", file.getOriginalFilename());
+
+                metadata.put("billId", bill.getId().toString());
+                metadata.put("userId", bill.getUserId().toString());
+                metadata.put("chunkIndex", idx++);
+                metadata.put("ingestedAt", now.toString());
+                metadata.put("ingestionVersion", "v1");
+
+                metadata.put("billStatus", bill.getStatus().toString());
+                metadata.put("billCategory", bill.getBillCategory().name());
+
+                metadata.put("amountDue", bill.getAmountDue() != null ? bill.getAmountDue().toString() : null);
+
+                metadata.put("dueDate", bill.getDueDate() != null ? bill.getDueDate().toString() : null);
+
+                metadata.put("consumerName", bill.getConsumerName());
+                metadata.put("consumerNumber", bill.getConsumerNumber());
+                metadata.put("providerName", bill.getProviderName());
+                metadata.put("confidenceScore", bill.getConfidenceScore());
+                metadata.put("confidenceDecision", bill.getConfidenceDecision().name());
             }
 
             vectorStore.add(documents);
@@ -62,6 +72,7 @@ public class IngestionService {
             bill.setChunkCount(documents.size());
             bill.setIngestedAt(now);
             bill.setStatus(BillStatus.INGESTED);
+            bill.setChunkCount(documents.size());
 
             log.info("Successfully ingested bill: {} into: {} chunks", billId, documents.size());
             return documents.size();

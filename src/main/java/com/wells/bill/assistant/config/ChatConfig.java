@@ -1,6 +1,5 @@
 package com.wells.bill.assistant.config;
 
-import com.wells.bill.assistant.util.CustomPromptTemple;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SafeGuardAdvisor;
@@ -35,7 +34,7 @@ public class ChatConfig {
 
     @Bean
     public ChatClient chatClient(ChatClient.Builder builder,
-           @Qualifier("chatMemory") ChatMemory chatMemory) {
+                                 @Qualifier("chatMemory") ChatMemory chatMemory) {
         // Builder already has:
         //  - ChatModel (Vertex AI Gemini)
         //  - Memory advisor (from chat-memory starter)
@@ -48,7 +47,6 @@ public class ChatConfig {
                         MessageChatMemoryAdvisor.builder(chatMemory).build(),
                         QuestionAnswerAdvisor.builder(vectorStore).build()
                 )
-                .defaultSystem(CustomPromptTemple.INSTRUCTION_LATEST)
                 .build();
     }
 }

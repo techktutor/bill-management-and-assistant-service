@@ -18,24 +18,22 @@ import java.util.List;
 public class TextExtractor {
 
     public static String extractTextUsingTika(MultipartFile file) {
+        log.info("Extracting text from bill using Tika: {}", file.getOriginalFilename());
         Tika tika = new Tika();
         try (InputStream is = file.getInputStream()) {
             return tika.parseToString(is);
         } catch (TikaException | IOException e) {
-            throw new InvalidUserInputException("Failed to extract text from bill", e);
+            throw new InvalidUserInputException("Failed to extract text from bill using Tika", e);
         }
     }
 
     public static List<Document> extractTextDocuments(MultipartFile file) {
-        log.info("Extracting text from bill: {}", file.getOriginalFilename());
-        List<Document> documents;
+        log.info("Extracting text from bill using TikaDocumentReader: {}", file.getOriginalFilename());
         try (InputStream is = file.getInputStream()) {
             Resource resource = new InputStreamResource(is);
-            documents = new TikaDocumentReader(resource).get();
+            return new TikaDocumentReader(resource).get();
         } catch (IOException e) {
             throw new InvalidUserInputException("Failed to extract text from bill", e);
         }
-        log.info("Text extraction completed for bill: {}", file.getOriginalFilename());
-        return documents;
     }
 }
