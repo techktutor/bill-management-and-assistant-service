@@ -10,6 +10,7 @@ public final class BillStateMachine {
     private static final Map<BillStatus, Set<BillStatus>> ALLOWED_TRANSITIONS =
             Map.of(
                     BillStatus.UPLOADED, Set.of(
+                            BillStatus.INGESTING,
                             BillStatus.INGESTED,
                             BillStatus.FAILED,
                             BillStatus.CANCELLED

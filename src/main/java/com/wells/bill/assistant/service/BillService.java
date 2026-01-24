@@ -32,17 +32,20 @@ public class BillService {
 
     @Transactional(readOnly = true)
     public BillDetail getBill(UUID billId) {
+        log.info("Fetching bill detail for billId={}", billId);
         return BillMapper.toDetail(getEntityOrThrow(billId));
     }
 
     @Transactional(readOnly = true)
     public Page<BillDetail> getBills(UUID userId, Pageable pageable) {
+        log.info("Listing bills for userId={}, page={}", userId, pageable);
         return billRepository.findByUserId(userId, pageable)
                 .map(BillMapper::toDetail);
     }
 
     @Transactional(readOnly = true)
     public List<BillDetail> getUnpaidBills(UUID userId) {
+        log.info("Listing unpaid bills for userId={}", userId);
         return billRepository.findByUserIdAndStatusIn(
                         userId,
                         Set.of(
@@ -69,6 +72,7 @@ public class BillService {
         entity.setStatus(BillStatus.UPLOADED);
         entity.setPaymentId(null);
 
+        log.info("Creating new bill for userId={}", entity.getUserId());
         return BillMapper.toDetail(
                 billRepository.save(entity)
         );
@@ -94,6 +98,7 @@ public class BillService {
         existing.setAmountDue(request.amountDue());
         existing.setCurrency(request.currency());
 
+        log.info("Updating billId={} for userId={}", billId, existing.getUserId());
         return BillMapper.toDetail(
                 billRepository.save(existing)
         );
@@ -112,6 +117,8 @@ public class BillService {
         );
 
         bill.setStatus(BillStatus.CANCELLED);
+
+        log.info("Deleting (cancelling) billId={} for userId={}", billId, bill.getUserId());
         billRepository.save(bill);
     }
 
@@ -120,10 +127,12 @@ public class BillService {
      * ===================================================== */
 
     public BillDetail markIngested(UUID billId) {
+        log.info("Marking billId={} as INGESTED", billId);
         return transition(billId, BillStatus.INGESTED);
     }
 
     public BillDetail markVerified(UUID billId) {
+        log.info("Marking billId={} as VERIFIED", billId);
         return transition(billId, BillStatus.VERIFIED);
     }
 
@@ -138,6 +147,7 @@ public class BillService {
         bill.setPaymentId(paymentId);
         bill.setStatus(BillStatus.PAID);
 
+        log.info("Marking billId={} as PAID with paymentId={}", billId, paymentId);
         BillMapper.toDetail(
                 billRepository.save(bill)
         );
@@ -164,6 +174,8 @@ public class BillService {
                     bill.setStatus(BillStatus.OVERDUE);
                     log.warn("Bill {} marked OVERDUE", bill.getId());
                 });
+
+        log.info("Overdue update completed for date={}", today);
     }
 
     /* =====================================================
@@ -179,12 +191,16 @@ public class BillService {
         );
 
         bill.setStatus(next);
+
+        log.info("Transitioned billId={} to status={}", billId, next);
+
         return BillMapper.toDetail(
                 billRepository.save(bill)
         );
     }
 
     private BillEntity getEntityOrThrow(UUID billId) {
+        log.info("Fetching bill entity for billId={}", billId);
         return billRepository.findById(billId)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
