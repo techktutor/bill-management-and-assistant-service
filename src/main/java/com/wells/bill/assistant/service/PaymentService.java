@@ -1,9 +1,9 @@
 package com.wells.bill.assistant.service;
 
-import com.wells.bill.assistant.entity.BillStatus;
+import com.wells.bill.assistant.model.BillStatus;
 import com.wells.bill.assistant.entity.PaymentEntity;
-import com.wells.bill.assistant.entity.PaymentStatus;
-import com.wells.bill.assistant.entity.PaymentType;
+import com.wells.bill.assistant.model.PaymentStatus;
+import com.wells.bill.assistant.model.PaymentType;
 import com.wells.bill.assistant.exception.DuplicatePaymentException;
 import com.wells.bill.assistant.model.*;
 import com.wells.bill.assistant.repository.PaymentRepository;

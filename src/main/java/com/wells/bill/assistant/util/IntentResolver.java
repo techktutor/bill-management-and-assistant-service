@@ -1,8 +1,7 @@
-package com.wells.bill.assistant.service;
+package com.wells.bill.assistant.util;
 
 import com.wells.bill.assistant.exception.InvalidUserInputException;
 import com.wells.bill.assistant.model.*;
-import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,7 +10,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@Component
 public class IntentResolver {
 
     private static final Pattern BILL_ID_PATTERN = Pattern.compile("\\b(bill[-_ ]?\\d+)\\b", Pattern.CASE_INSENSITIVE);
@@ -22,7 +20,7 @@ public class IntentResolver {
 
     private static final Pattern DATE_PATTERN = Pattern.compile("\\b(\\d{4}-\\d{2}-\\d{2})\\b");
 
-    public Intent resolve(ChatRequest request, ConversationState state) {
+    public static Intent resolve(ChatRequest request, ConversationState state) {
 
         String message = request.getUserMessage().trim().toLowerCase();
 
@@ -52,21 +50,21 @@ public class IntentResolver {
     // Helper methods
     // --------------------------------------------------
 
-    private boolean containsPaymentKeyword(String message) {
+    private static boolean containsPaymentKeyword(String message) {
         return message.contains("pay") || message.contains("payment") || message.contains("schedule payment") || message.contains("schedule later");
     }
 
-    private boolean isConfirmation(String message) {
+    private static boolean isConfirmation(String message) {
         return CONFIRMATION_KEYWORDS.contains(message);
     }
 
-    private boolean containsBillKeyword(String msg) {
+    private static boolean containsBillKeyword(String msg) {
         return msg.contains("bill")
                 || msg.contains("due")
                 || msg.contains("amount");
     }
 
-    private Optional<String> extractBillId(String message) {
+    private static Optional<String> extractBillId(String message) {
         Matcher matcher = BILL_ID_PATTERN.matcher(message);
         return matcher.find()
                 ? Optional.of(matcher.group(1).toUpperCase())
@@ -79,7 +77,7 @@ public class IntentResolver {
         throw new InvalidUserInputException("Please specify a payment date (yyyy-MM-dd).");
     }
 
-    private BigDecimal extractAmount(String message) {
+    private static BigDecimal extractAmount(String message) {
         Matcher matcher = AMOUNT_PATTERN.matcher(message);
         return matcher.find()
                 ? new BigDecimal(matcher.group(2))

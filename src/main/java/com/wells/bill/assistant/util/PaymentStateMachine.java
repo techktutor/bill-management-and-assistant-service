@@ -1,6 +1,6 @@
 package com.wells.bill.assistant.util;
 
-import com.wells.bill.assistant.entity.PaymentStatus;
+import com.wells.bill.assistant.model.PaymentStatus;
 
 import java.util.Map;
 import java.util.Set;

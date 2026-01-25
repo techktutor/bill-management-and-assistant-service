@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 @Component
-public class InMemoryPaymentConfirmationStore implements PaymentConfirmationStore {
+public class PaymentConfirmationStoreInMemory implements PaymentConfirmationStore {
 
     private final ConcurrentMap<String, PaymentConfirmationToken> store =
             new ConcurrentHashMap<>();

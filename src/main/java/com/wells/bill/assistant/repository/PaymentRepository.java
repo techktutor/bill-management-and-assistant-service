@@ -1,8 +1,8 @@
 package com.wells.bill.assistant.repository;
 
 import com.wells.bill.assistant.entity.PaymentEntity;
-import com.wells.bill.assistant.entity.PaymentStatus;
-import com.wells.bill.assistant.entity.PaymentType;
+import com.wells.bill.assistant.model.PaymentStatus;
+import com.wells.bill.assistant.model.PaymentType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -1,8 +1,5 @@
 package com.wells.bill.assistant.model;
 
-import com.wells.bill.assistant.entity.BillCategory;
-import com.wells.bill.assistant.entity.BillStatus;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;

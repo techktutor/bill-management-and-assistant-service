@@ -9,7 +9,6 @@ public enum DataQualityDecision {
     NEEDS_CONFIRMATION,
 
     /** Block processing – data is unreliable */
-    NOT_CONFIDENT,
+    NOT_CONFIDENT
 
-    UNKNOWN
 }

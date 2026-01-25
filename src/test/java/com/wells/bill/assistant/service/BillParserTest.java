@@ -1,6 +1,6 @@
 package com.wells.bill.assistant.service;
 
-import com.wells.bill.assistant.entity.BillCategory;
+import com.wells.bill.assistant.model.BillCategory;
 import com.wells.bill.assistant.model.BillDetail;
 import com.wells.bill.assistant.model.BillParseResult;
 import org.junit.jupiter.api.BeforeEach;

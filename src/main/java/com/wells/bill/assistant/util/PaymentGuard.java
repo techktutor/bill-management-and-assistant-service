@@ -1,17 +1,11 @@
-package com.wells.bill.assistant.service;
+package com.wells.bill.assistant.util;
 
 import com.wells.bill.assistant.exception.InvalidPaymentStateException;
 import com.wells.bill.assistant.model.*;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 
-@Service
-public class PaymentGuardService {
+public class PaymentGuard {
 
-    @Value("${payment.confirmation.ttl.seconds:120}")
-    private long ttlSeconds;
-
-    public GuardResult evaluate(ConversationContext context, Intent intent) {
+    public static GuardResult evaluate(ConversationContext context, Intent intent) {
         if (intent instanceof UnknownIntent) {
             return GuardResult.allow();
         }
@@ -32,14 +26,14 @@ public class PaymentGuardService {
         return GuardResult.allow();
     }
 
-    private GuardResult handleInitiation(ConversationContext context, PendingPayment pending) {
+    private static GuardResult handleInitiation(ConversationContext context, PendingPayment pending) {
         if (context.state() != ConversationState.IDLE) {
             return GuardResult.block("A payment is already in progress.");
         }
         return GuardResult.requestConfirmation("Do you want to proceed with the payment?", pending, ConversationState.AWAITING_CONFIRMATION);
     }
 
-    private GuardResult handleInitiation(ConversationContext context, InitiatePaymentIntent intent) {
+    private static GuardResult handleInitiation(ConversationContext context, InitiatePaymentIntent intent) {
         if (context.state() != ConversationState.IDLE) {
             return GuardResult.block("A payment is already in progress.");
         }
@@ -48,11 +42,12 @@ public class PaymentGuardService {
         return GuardResult.requestConfirmation("Do you want to proceed with the payment?", pending, ConversationState.AWAITING_CONFIRMATION);
     }
 
-    private GuardResult handleConfirmation(ConversationContext context) {
+    private static GuardResult handleConfirmation(ConversationContext context) {
         if (context.state() != ConversationState.AWAITING_CONFIRMATION) {
             return GuardResult.block("There is no payment awaiting confirmation.");
         }
 
+        long ttlSeconds = 120;
         if (context.isConfirmationExpired(ttlSeconds)) {
             return GuardResult.block("Payment confirmation expired. Please start again.");
         }

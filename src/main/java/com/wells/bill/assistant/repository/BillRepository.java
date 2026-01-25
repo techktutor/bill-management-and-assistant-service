@@ -1,8 +1,8 @@
 package com.wells.bill.assistant.repository;
 
-import com.wells.bill.assistant.entity.BillCategory;
+import com.wells.bill.assistant.model.BillCategory;
 import com.wells.bill.assistant.entity.BillEntity;
-import com.wells.bill.assistant.entity.BillStatus;
+import com.wells.bill.assistant.model.BillStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -37,7 +37,7 @@ public interface BillRepository extends JpaRepository<BillEntity, UUID> {
             SELECT b
             FROM BillEntity b
             WHERE b.userId = :userId
-              AND b.status <> com.wells.bill.assistant.entity.BillStatus.PAID
+              AND b.status <> com.wells.bill.assistant.model.BillStatus.PAID
               AND b.dueDate < :today
             ORDER BY b.dueDate ASC
             """)
@@ -49,7 +49,7 @@ public interface BillRepository extends JpaRepository<BillEntity, UUID> {
             SELECT b
             FROM BillEntity b
             WHERE b.userId = :userId
-              AND b.status <> com.wells.bill.assistant.entity.BillStatus.PAID
+              AND b.status <> com.wells.bill.assistant.model.BillStatus.PAID
               AND b.dueDate BETWEEN :start AND :end
             ORDER BY b.dueDate ASC
             """)
@@ -68,7 +68,7 @@ public interface BillRepository extends JpaRepository<BillEntity, UUID> {
             SELECT COALESCE(SUM(b.amountDue), 0)
             FROM BillEntity b
             WHERE b.userId = :userId
-              AND b.status <> com.wells.bill.assistant.entity.BillStatus.PAID
+              AND b.status <> com.wells.bill.assistant.model.BillStatus.PAID
               AND b.dueDate < :today
             """)
     BigDecimal getTotalOverdueAmount(UUID userId, LocalDate today);

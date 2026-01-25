@@ -1,7 +1,5 @@
 package com.wells.bill.assistant.model;
 
-import com.wells.bill.assistant.entity.PaymentStatus;
-import com.wells.bill.assistant.entity.PaymentType;
 import lombok.Getter;
 import lombok.Setter;
 

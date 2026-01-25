@@ -1,7 +1,7 @@
 package com.wells.bill.assistant.tools;
 
-import com.wells.bill.assistant.entity.BillStatus;
-import com.wells.bill.assistant.entity.PaymentType;
+import com.wells.bill.assistant.model.BillStatus;
+import com.wells.bill.assistant.model.PaymentType;
 import com.wells.bill.assistant.model.*;
 import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.PaymentService;

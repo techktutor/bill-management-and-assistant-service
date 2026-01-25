@@ -33,13 +33,7 @@ public class ChatConfig {
     }
 
     @Bean
-    public ChatClient chatClient(ChatClient.Builder builder,
-                                 @Qualifier("chatMemory") ChatMemory chatMemory) {
-        // Builder already has:
-        //  - ChatModel (Vertex AI Gemini)
-        //  - Memory advisor (from chat-memory starter)
-        //  - RAG advisor (from rag + advisors-vector-store starters)
-        //  - Tool pipeline (from @Tool methods)
+    public ChatClient chatClient(ChatClient.Builder builder, @Qualifier("chatMemory") ChatMemory chatMemory) {
         return builder
                 .defaultAdvisors(
                         new SimpleLoggerAdvisor(),

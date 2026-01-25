@@ -1,6 +1,6 @@
 package com.wells.bill.assistant.tools;
 
-import com.wells.bill.assistant.entity.BillStatus;
+import com.wells.bill.assistant.model.BillStatus;
 import com.wells.bill.assistant.model.BillAnomalyReport;
 import com.wells.bill.assistant.model.BillDetail;
 import com.wells.bill.assistant.model.BillExplanation;

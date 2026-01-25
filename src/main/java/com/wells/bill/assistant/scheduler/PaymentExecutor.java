@@ -11,7 +11,7 @@ import java.time.LocalDate;
 
 @Component
 @RequiredArgsConstructor
-public class ScheduledPaymentExecutor {
+public class PaymentExecutor {
 
     private final PaymentService paymentService;
 

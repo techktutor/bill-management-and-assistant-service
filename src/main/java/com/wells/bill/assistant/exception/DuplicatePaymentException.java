@@ -6,7 +6,4 @@ public class DuplicatePaymentException extends RuntimeException {
         super(message);
     }
 
-    public DuplicatePaymentException(String message, Throwable cause) {
-        super(message, cause);
-    }
 }

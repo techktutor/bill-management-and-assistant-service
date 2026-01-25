@@ -1,4 +1,4 @@
-package com.wells.bill.assistant.entity;
+package com.wells.bill.assistant.model;
 
 import com.fasterxml.jackson.annotation.JsonEnumDefaultValue;
 

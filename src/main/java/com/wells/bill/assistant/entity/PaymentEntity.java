@@ -1,6 +1,8 @@
 package com.wells.bill.assistant.entity;
 
 import com.wells.bill.assistant.model.ExecutedBy;
+import com.wells.bill.assistant.model.PaymentStatus;
+import com.wells.bill.assistant.model.PaymentType;
 import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;

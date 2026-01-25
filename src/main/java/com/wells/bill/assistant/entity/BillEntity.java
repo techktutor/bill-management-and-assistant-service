@@ -1,5 +1,7 @@
 package com.wells.bill.assistant.entity;
 
+import com.wells.bill.assistant.model.BillCategory;
+import com.wells.bill.assistant.model.BillStatus;
 import com.wells.bill.assistant.model.DataQualityDecision;
 import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;

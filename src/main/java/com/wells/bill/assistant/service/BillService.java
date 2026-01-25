@@ -1,7 +1,7 @@
 package com.wells.bill.assistant.service;
 
 import com.wells.bill.assistant.entity.BillEntity;
-import com.wells.bill.assistant.entity.BillStatus;
+import com.wells.bill.assistant.model.BillStatus;
 import com.wells.bill.assistant.model.BillDetail;
 import com.wells.bill.assistant.repository.BillRepository;
 import com.wells.bill.assistant.util.BillMapper;
