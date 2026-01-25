@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/bill_db_store
+    username: bill_db_user
+    password: bill_db_password
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+
+  sql:
+    init:
+      mode: ALWAYS   # schema.sql + data.sql
+
+  ai:
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: ALWAYS

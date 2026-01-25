@@ -1,0 +1,16 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  sql:
+    init:
+      mode: NEVER
+
+  ai:
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: ALWAYS

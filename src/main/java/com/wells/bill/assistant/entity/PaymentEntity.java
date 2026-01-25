@@ -65,7 +65,7 @@ public class PaymentEntity {
     private String idempotencyKey;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "executedBy", length = 20)
+    @Column(name = "executed_by", length = 20)
     private ExecutedBy executedBy;
 
     @Column(name = "approved_at")

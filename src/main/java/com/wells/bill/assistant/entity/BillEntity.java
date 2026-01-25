@@ -87,7 +87,7 @@ public class BillEntity {
     @Column(name = "ingested_at")
     private Instant ingestedAt;
 
-    @Column(name = "confidence_score", precision = 5, scale = 2)
+    @Column(name = "confidence_score")
     private Integer confidenceScore;
 
     @Enumerated(EnumType.STRING)

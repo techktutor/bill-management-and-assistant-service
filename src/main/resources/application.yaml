@@ -1,38 +1,29 @@
 spring:
-  profiles:
-    active:
-      - local
   application:
     name: bill-assistant
-  # ====================================================================
-  # 1. DATABASE CONFIGURATION (PostgreSQL + PGVector)
-  #    Assumes you are running PGVector in Docker (see README)
-  # ====================================================================
-  datasource:
-    url: jdbc:postgresql://localhost:5432/bill_db_store
-    username: bill_db_user
-    password: bill_db_password
-    driver-class-name: org.postgresql.Driver
+
   jpa:
     defer-datasource-initialization: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: none
+    open-in-view: false
+
   sql:
     init:
-      mode: ALWAYS
+      mode: NEVER
+
   jackson:
     mapper:
       accept-case-insensitive-enums: true
 
-  # ====================================================================
-  # 2. SPRING AI CONFIGURATION
-  # ====================================================================
   ai:
     chat:
       memory:
         repository:
           jdbc:
-            initialize-schema: ALWAYS # creates a default table for chat memory - SPRING_AI_CHAT_MEMORY
+            initialize-schema: NEVER
+
     vertex:
       ai:
         embedding:
@@ -41,6 +32,7 @@ spring:
           text:
             options:
               model: ${VERTEX_EMBEDDING_MODEL:text-embedding-004}
+
         gemini:
           project-id: ${VERTEX_PROJECT_ID:gc-vertex-spring-ai-project}
           location: ${VERTEX_LOCATION:us-central1}
@@ -48,10 +40,11 @@ spring:
             options:
               model: ${VERTEX_GEMINI_MODEL:gemini-2.0-flash}
               temperature: 0.5
+
     vectorstore:
       pgvector:
         initialize-schema: false
-        remove-existing-vector-store-table: true
+        remove-existing-vector-store-table: false   # 🔒 CRITICAL
         index-type: HNSW
         dimensions: 768
         distance-type: COSINE_DISTANCE
@@ -62,3 +55,9 @@ server:
   shutdown: GRACEFUL
   servlet:
     context-path: /assistant
+
+logging:
+  level:
+    org.springframework.web: INFO
+    org.springframework.ai: INFO
+    org.springframework.boot.context.config: INFO

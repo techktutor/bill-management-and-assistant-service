@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: bill-assistant-db-store
+    restart: always
+    environment:
+      POSTGRES_DB: bill_db_store
+      POSTGRES_USER: bill_db_user
+      POSTGRES_PASSWORD: bill_db_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - bill-assistant-db-store-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U bill_db_user -d bill_db_store" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_preload_libraries=vector"
+
+volumes:
+  bill-assistant-db-store-data:

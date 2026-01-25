@@ -10,11 +10,10 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.Assert;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -40,46 +39,71 @@ public class IngestionService {
         }
 
         bill.setStatus(BillStatus.INGESTING);
+
         try {
             Instant now = Instant.now();
-            int idx = 0;
 
-            for (Document chunk : documents) {
-                Map<String, Object> metadata = chunk.getMetadata();
+            List<Document> mutableDocuments = new ArrayList<>(documents);
 
-                metadata.put("billId", bill.getId().toString());
-                metadata.put("userId", bill.getUserId().toString());
-                metadata.put("chunkIndex", idx++);
-                metadata.put("ingestedAt", now.toString());
-                metadata.put("ingestionVersion", "v1");
+            for (int i = 0; i < mutableDocuments.size(); i++) {
+                Document chunk = mutableDocuments.get(i);
 
-                metadata.put("billStatus", bill.getStatus().toString());
-                metadata.put("billCategory", bill.getBillCategory().name());
+                Map<String, Object> metadata = new HashMap<>(chunk.getMetadata());
 
-                metadata.put("amountDue", bill.getAmountDue() != null ? bill.getAmountDue().toString() : null);
+                putIfNotNull(metadata, "billId", bill.getId().toString());
+                putIfNotNull(metadata, "userId", bill.getUserId().toString());
+                putIfNotNull(metadata, "chunkIndex", i);
+                putIfNotNull(metadata, "ingestedAt", now.toString());
+                putIfNotNull(metadata, "ingestionVersion", "v1");
+                putIfNotNull(metadata, "billStatus", bill.getStatus().toString());
+                putIfNotNull(metadata, "billCategory", bill.getBillCategory().name());
 
-                metadata.put("dueDate", bill.getDueDate() != null ? bill.getDueDate().toString() : null);
+                putIfNotNull(metadata, "amountDue", bill.getAmountDue() != null ? bill.getAmountDue().toString() : null);
+                putIfNotNull(metadata, "dueDate", bill.getDueDate() != null ? bill.getDueDate().toString() : null);
 
-                metadata.put("consumerName", bill.getConsumerName());
-                metadata.put("consumerNumber", bill.getConsumerNumber());
-                metadata.put("providerName", bill.getProviderName());
-                metadata.put("confidenceScore", bill.getConfidenceScore());
-                metadata.put("confidenceDecision", bill.getConfidenceDecision().name());
+                putIfNotNull(metadata, "consumerName", bill.getConsumerName());
+                putIfNotNull(metadata, "consumerNumber", bill.getConsumerNumber());
+                putIfNotNull(metadata, "providerName", bill.getProviderName());
+                putIfNotNull(metadata, "confidenceScore", bill.getConfidenceScore());
+                putIfNotNull(metadata, "confidenceDecision",
+                        bill.getConfidenceDecision() != null
+                                ? bill.getConfidenceDecision().name()
+                                : null);
+
+                Document enriched = Document.builder()
+                        .id(chunk.getId())
+                        .text(chunk.getText())
+                        .metadata(metadata)
+                        .build();
+
+                mutableDocuments.set(i, enriched);
             }
 
-            vectorStore.add(documents);
+            mutableDocuments.forEach(d ->
+                    Assert.isTrue(
+                            d.getMetadata().values().stream().noneMatch(Objects::isNull),
+                            "Document metadata contains null values"
+                    )
+            );
 
-            bill.setChunkCount(documents.size());
+            vectorStore.add(mutableDocuments);
+
+            bill.setChunkCount(mutableDocuments.size());
             bill.setIngestedAt(now);
             bill.setStatus(BillStatus.INGESTED);
-            bill.setChunkCount(documents.size());
 
-            log.info("Successfully ingested bill: {} into: {} chunks", billId, documents.size());
-            return documents.size();
+            log.info("Successfully ingested bill: {} into: {} chunks", billId, mutableDocuments.size());
+            return mutableDocuments.size();
         } catch (Exception e) {
             bill.setStatus(BillStatus.FAILED);
             log.error("ETL ingestion failed for bill {}: {}", billId, e.getMessage(), e);
             throw new RuntimeException("ETL ingestion failed.", e);
+        }
+    }
+
+    private void putIfNotNull(Map<String, Object> metadata, String key, Object value) {
+        if (value != null) {
+            metadata.put(key, value);
         }
     }
 }
