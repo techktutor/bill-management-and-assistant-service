@@ -24,36 +24,36 @@ public final class BillConfidenceValidator {
         /* ---------- HARD BLOCKERS (MANDATORY FIELDS) ---------- */
 
         // amountDue must exist & be trustworthy
-        if (fields.amountDue().getValue() == null) {
+        if (fields.amountDue().value() == null) {
             reasons.add("Amount due not found");
             return reject(reasons);
         }
 
-        if (fields.amountDue().getConfidence() < MIN_AMOUNT_CONFIDENCE) {
+        if (fields.amountDue().confidence() < MIN_AMOUNT_CONFIDENCE) {
             reasons.add("Amount due confidence too low");
             return reject(reasons);
         }
 
-        if (fields.amountDue().getReasons().contains(ReasonCode.NOT_FOUND) ||
-                fields.amountDue().getReasons().contains(ReasonCode.INFERRED)) {
+        if (fields.amountDue().reasons().contains(ReasonCode.NOT_FOUND) ||
+                fields.amountDue().reasons().contains(ReasonCode.INFERRED)) {
 
             reasons.add("Amount due inferred or not explicitly found");
             return reject(reasons);
         }
 
         // dueDate must exist & be trustworthy
-        if (fields.dueDate().getValue() == null) {
+        if (fields.dueDate().value() == null) {
             reasons.add("Due date not found");
             return reject(reasons);
         }
 
-        if (fields.dueDate().getConfidence() < MIN_DUE_DATE_CONFIDENCE) {
+        if (fields.dueDate().confidence() < MIN_DUE_DATE_CONFIDENCE) {
             reasons.add("Due date confidence too low");
             return reject(reasons);
         }
 
-        if (fields.dueDate().getReasons().contains(ReasonCode.NOT_FOUND) ||
-                fields.dueDate().getReasons().contains(ReasonCode.INFERRED)) {
+        if (fields.dueDate().reasons().contains(ReasonCode.NOT_FOUND) ||
+                fields.dueDate().reasons().contains(ReasonCode.INFERRED)) {
 
             reasons.add("Due date inferred or not explicitly found");
             return reject(reasons);
@@ -66,15 +66,15 @@ public final class BillConfidenceValidator {
             return needsConfirmation(reasons);
         }
 
-        if (fields.consumerName().getConfidence() < 60) {
+        if (fields.consumerName().confidence() < 60) {
             reasons.add("Consumer name confidence is low");
         }
 
-        if (fields.consumerNumber().getConfidence() < 60) {
+        if (fields.consumerNumber().confidence() < 60) {
             reasons.add("Consumer number confidence is low");
         }
 
-        if (fields.providerName().getConfidence() < 60) {
+        if (fields.providerName().confidence() < 60) {
             reasons.add("Provider name confidence is low");
         }
 

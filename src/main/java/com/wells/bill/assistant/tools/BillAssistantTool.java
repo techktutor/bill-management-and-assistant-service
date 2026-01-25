@@ -175,9 +175,9 @@ public class BillAssistantTool {
                 bill.billCategory(),
                 bill.providerName(),
                 bill.amountDue(),
-                bill.currency(),
-                bill.billingStartDate(),
-                bill.billingEndDate(),
+                bill.amountDue().currency().getSymbol(),
+                bill.billingPeriod().start(),
+                bill.billingPeriod().end(),
                 bill.dueDate(),
                 bill.status(),
                 overdue
@@ -192,10 +192,10 @@ public class BillAssistantTool {
                 bill.providerName(),
                 bill.consumerName(),
                 bill.serviceNumber(),
-                bill.amountDue(),
-                bill.currency(),
-                bill.billingStartDate(),
-                bill.billingEndDate(),
+                bill.amountDue().amount(),
+                bill.amountDue().currency().getSymbol(),
+                bill.billingPeriod().start(),
+                bill.billingPeriod().end(),
                 bill.dueDate(),
                 bill.status().name(),
                 overdue,
@@ -220,9 +220,9 @@ public class BillAssistantTool {
                 "Here are possible reasons this bill might be higher than expected:\n"
         );
 
-        if (bill.billingStartDate() != null && bill.billingEndDate() != null) {
-            long days = bill.billingEndDate().toEpochDay()
-                    - bill.billingStartDate().toEpochDay();
+        if (bill.billingPeriod().start() != null && bill.billingPeriod().end() != null) {
+            long days = bill.billingPeriod().end().toEpochDay()
+                    - bill.billingPeriod().start().toEpochDay();
             if (days > 31) {
                 explanation.append("- The billing period is longer than usual.\n");
             }
@@ -286,7 +286,7 @@ public class BillAssistantTool {
                         bill.billCategory(),
                         bill.providerName(),
                         bill.amountDue(),
-                        bill.currency(),
+                        bill.amountDue().currency().getSymbol(),
                         bill.dueDate()
                 )
                 .strip();
@@ -308,8 +308,8 @@ public class BillAssistantTool {
                 "Provider: " + bill.providerName(),
                 "Category: " + bill.billCategory(),
                 "Service Number: " + bill.serviceNumber(),
-                "Amount Due: " + bill.amountDue() + " " + bill.currency(),
-                "Billing Period: " + bill.billingStartDate() + " to " + bill.billingEndDate(),
+                "Amount Due: " + bill.amountDue() + " " + bill.amountDue().currency().getSymbol(),
+                "Billing Period: " + bill.billingPeriod().start() + " to " + bill.billingPeriod().end(),
                 "Due Date: " + bill.dueDate(),
                 "Current Status: " + bill.status()
         );
@@ -340,7 +340,7 @@ public class BillAssistantTool {
                             bill.billCategory(),
                             bill.providerName(),
                             bill.amountDue(),
-                            bill.currency(),
+                            bill.amountDue().currency().getSymbol(),
                             bill.dueDate(),
                             bill.status()
                     );
@@ -355,7 +355,7 @@ public class BillAssistantTool {
                             bill.billCategory(),
                             bill.providerName(),
                             bill.amountDue(),
-                            bill.currency(),
+                            bill.amountDue().currency().getSymbol(),
                             bill.dueDate(),
                             bill.status()
                     );
@@ -379,7 +379,7 @@ public class BillAssistantTool {
         }
 
         double total = unpaid.stream()
-                .mapToDouble(b -> b.amountDue().doubleValue())
+                .mapToDouble(b -> b.amountDue().amount().doubleValue())
                 .sum();
 
         double average = total / unpaid.size();
@@ -416,11 +416,11 @@ public class BillAssistantTool {
          * ----------------------------------- */
         double averageAmount = unpaid.stream()
                 .filter(b -> !b.id().equals(billId))
-                .mapToDouble(b -> b.amountDue().doubleValue())
+                .mapToDouble(b -> b.amountDue().amount().doubleValue())
                 .average()
-                .orElse(current.amountDue().doubleValue());
+                .orElse(current.amountDue().amount().doubleValue());
 
-        if (current.amountDue().doubleValue() > averageAmount * 1.5) {
+        if (current.amountDue().amount().doubleValue() > averageAmount * 1.5) {
             signals.add("Bill amount is significantly higher than your usual bills.");
             score += 30;
         }
@@ -477,7 +477,7 @@ public class BillAssistantTool {
                 current.id(),
                 anomalous,
                 Math.min(score, 100),
-                current.amountDue(),
+                current.amountDue().amount(),
                 BigDecimal.valueOf(averageAmount),
                 signals,
                 summary

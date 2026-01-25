@@ -2,6 +2,7 @@ package com.wells.bill.assistant.integ;
 
 import com.wells.bill.assistant.model.BillDetail;
 import com.wells.bill.assistant.model.BillParseResult;
+import com.wells.bill.assistant.model.Money;
 import com.wells.bill.assistant.service.BillParser;
 import com.wells.bill.assistant.service.IngestionService;
 import org.junit.jupiter.api.Test;
@@ -16,11 +17,10 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Currency;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -68,7 +68,7 @@ public class IngestControllerIntegrationTest {
                 """;
 
         BillDetail details = BillDetail.builder()
-                .amountDue(new BigDecimal("818.50"))   // partial data (LLM may enrich later)
+                .amountDue(new Money(new BigDecimal("818.50"), Currency.getInstance("USD")))   // partial data (LLM may enrich later)
                 .dueDate(LocalDate.now())
                 .consumerName("Ramesh Kumar")
                 .consumerNumber("12345678901")

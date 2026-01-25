@@ -92,11 +92,11 @@ public class BillService {
         existing.setConsumerName(request.consumerName());
         existing.setProviderName(request.providerName());
         existing.setServiceNumber(request.serviceNumber());
-        existing.setBillingStartDate(request.billingStartDate());
-        existing.setBillingEndDate(request.billingEndDate());
+        existing.setBillingStartDate(request.billingPeriod().start());
+        existing.setBillingEndDate(request.billingPeriod().end());
         existing.setDueDate(request.dueDate());
-        existing.setAmountDue(request.amountDue());
-        existing.setCurrency(request.currency());
+        existing.setAmountDue(request.amountDue().amount());
+        existing.setCurrency(request.amountDue().currency().getSymbol());
 
         log.info("Updating billId={} for userId={}", billId, existing.getUserId());
         return BillMapper.toDetail(

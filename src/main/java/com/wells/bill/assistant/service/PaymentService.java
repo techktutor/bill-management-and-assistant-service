@@ -59,7 +59,7 @@ public class PaymentService {
             throw new IllegalStateException("Bill not ready for payment");
         }
 
-        if (req.getAmount().compareTo(bill.amountDue()) != 0) {
+        if (req.getAmount().compareTo(bill.amountDue().amount()) != 0) {
             throw new IllegalArgumentException("Payment amount must match bill amount");
         }
 
@@ -75,7 +75,7 @@ public class PaymentService {
         payment.setUserId(req.getUserId());
         payment.setBillId(req.getBillId());
         payment.setAmount(req.getAmount());
-        payment.setCurrency(req.getCurrency() == null ? bill.currency() : req.getCurrency());
+        payment.setCurrency(req.getCurrency() == null ? bill.amountDue().currency().getSymbol() : req.getCurrency());
         payment.setIdempotencyKey(req.getIdempotencyKey());
 
         if (req.getExecutedBy() == null) {

@@ -1,15 +1,16 @@
 package com.wells.bill.assistant.model;
 
 import lombok.Builder;
-import lombok.Value;
 
 import java.util.List;
 
-@Value
+/**
+ * @param confidence 0–100
+ * @param reasons    why we believe this
+ */
 @Builder
-public class FieldExtraction<T> {
-    T value;
-    int confidence;                 // 0–100
-    List<ReasonCode> reasons;       // why we believe this
+public record FieldExtraction<T>(
+        T value, int confidence,
+        List<ReasonCode> reasons
+) {
 }
-

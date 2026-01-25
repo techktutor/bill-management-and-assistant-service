@@ -44,7 +44,7 @@ public class BillEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "consumer_id", nullable = false)
+    @Column(name = "consumer_id")
     private String consumerNumber;
 
     @Column(name = "consumer_name")
@@ -54,7 +54,7 @@ public class BillEntity {
     @Column(name = "category", nullable = false, length = 32)
     private BillCategory billCategory;
 
-    @Column(name = "provider_name", nullable = false)
+    @Column(name = "provider_name")
     private String providerName;
 
     @Column(name = "service_number")

@@ -3,14 +3,12 @@ package com.wells.bill.assistant.controller;
 import com.wells.bill.assistant.exception.InvalidUserInputException;
 import com.wells.bill.assistant.model.BillDetail;
 import com.wells.bill.assistant.model.BillParseResult;
-import com.wells.bill.assistant.model.ConfidenceValidationResult;
 import com.wells.bill.assistant.model.Context;
 import com.wells.bill.assistant.service.BillParser;
 import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.IngestionService;
 import com.wells.bill.assistant.store.ContextStoreInMemory;
 import com.wells.bill.assistant.util.TextExtractor;
-import com.wells.bill.assistant.validator.BillConfidenceValidator;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -23,7 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 
-import static com.wells.bill.assistant.model.DataQualityDecision.*;
+import static com.wells.bill.assistant.model.DataQualityDecision.HIGH_CONFIDENCE;
 import static com.wells.bill.assistant.util.CookieGenerator.CONTEXT_COOKIE;
 import static com.wells.bill.assistant.util.CookieGenerator.getContextKey;
 
@@ -33,7 +31,6 @@ import static com.wells.bill.assistant.util.CookieGenerator.getContextKey;
 public class IngestController {
 
     private static final Logger log = LoggerFactory.getLogger(IngestController.class);
-    public static final int HIGHEST_CONFIDENCE_SCORE = 100;
 
     private final BillParser billParser;
     private final BillService billService;
@@ -58,7 +55,7 @@ public class IngestController {
             ));
         }
 
-        log.info("Ingest request received for files: {}", files.size());
+        log.info("Ingest request received for: {} files", files.size());
         List<Map<String, Object>> results = new ArrayList<>();
 
         for (MultipartFile file : files) {
@@ -95,45 +92,27 @@ public class IngestController {
     }
 
     private BillDetail extractEssentialDetailsAndIngest(String rawText, List<Document> documents, UUID userId) {
+        log.info("Extracting essential bill details using rule based parsing =>>>");
         BillParseResult parseResult = billParser.parse(rawText);
 
         BillDetail resultBill = parseResult.bill();
 
-        ConfidenceValidationResult validation = BillConfidenceValidator.validate(parseResult);
+        resultBill = BillDetail.builder()
+                .amountDue(resultBill.amountDue())
+                .dueDate(resultBill.dueDate())
+                .billingPeriod(resultBill.billingPeriod())
+                .consumerName(resultBill.consumerName())
+                .consumerNumber(resultBill.consumerNumber())
+                .providerName(resultBill.providerName())
+                .billCategory(resultBill.billCategory())
+                .userId(userId)
+                .confidenceScore(parseResult.overallConfidence())
+                .confidenceDecision(HIGH_CONFIDENCE)
+                .build();
 
-        if (Objects.requireNonNull(validation.decision()) == HIGH_CONFIDENCE) {
-            resultBill = BillDetail.builder()
-                    .amountDue(resultBill.amountDue())
-                    .dueDate(resultBill.dueDate())
-                    .consumerName(resultBill.consumerName())
-                    .consumerNumber(resultBill.consumerNumber())
-                    .providerName(resultBill.providerName())
-                    .billCategory(resultBill.billCategory())
-                    .userId(userId)
-                    .confidenceScore(parseResult.overallConfidence())
-                    .confidenceDecision(validation.decision())
-                    .build();
-        }
+        BillDetail savedBill = billService.createBill(resultBill);
+        etlService.ingestFile(savedBill.id(), documents);
 
-        if (Objects.requireNonNull(validation.decision()) == NOT_CONFIDENT || validation.decision() == NEEDS_CONFIRMATION) {
-            log.warn("Rule based parsing confidence too low, switching to LLM based parsing =>>");
-            resultBill = billParser.parseUsingLLM(rawText);
-            resultBill = BillDetail.builder()
-                    .amountDue(resultBill.amountDue())
-                    .dueDate(resultBill.dueDate())
-                    .consumerName(resultBill.consumerName())
-                    .consumerNumber(resultBill.consumerNumber())
-                    .providerName(resultBill.providerName())
-                    .billCategory(resultBill.billCategory())
-                    .userId(userId)
-                    .confidenceScore(HIGHEST_CONFIDENCE_SCORE)
-                    .confidenceDecision(HIGH_CONFIDENCE)
-                    .build();
-        }
-
-        resultBill = billService.createBill(resultBill);
-        etlService.ingestFile(resultBill.id(), documents);
-
-        return resultBill;
+        return savedBill;
     }
 }

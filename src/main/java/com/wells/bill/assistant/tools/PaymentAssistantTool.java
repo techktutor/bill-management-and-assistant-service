@@ -71,21 +71,21 @@ public class PaymentAssistantTool {
         return new PaymentConfirmation(
                 billId,
                 userId,
-                bill.amountDue(),
-                bill.currency(),
+                bill.amountDue().amount(),
+                bill.amountDue().currency().getSymbol(),
                 scheduledDate,
                 token,
                 scheduledDate == null
                         ? "Please confirm payment of %s %s to %s within 5 minutes."
                         .formatted(
                                 bill.amountDue(),
-                                bill.currency(),
+                                bill.amountDue().currency().getSymbol(),
                                 bill.providerName()
                         )
                         : "Please confirm scheduled payment of %s %s to %s on %s within 5 minutes."
                         .formatted(
                                 bill.amountDue(),
-                                bill.currency(),
+                                bill.amountDue().currency().getSymbol(),
                                 bill.providerName(),
                                 scheduledDate
                         )
@@ -133,15 +133,15 @@ public class PaymentAssistantTool {
         String idempotencyKey = IdempotencyKeyGenerator.generate(
                 userId,
                 bill.id(),
-                bill.amountDue(),
-                bill.currency()
+                bill.amountDue().amount(),
+                bill.amountDue().currency().getSymbol()
         );
 
         PaymentIntentRequest req = new PaymentIntentRequest();
         req.setBillId(billId);
         req.setUserId(userId);
-        req.setAmount(bill.amountDue());
-        req.setCurrency(bill.currency());
+        req.setAmount(bill.amountDue().amount());
+        req.setCurrency(bill.amountDue().currency().getSymbol());
         req.setScheduledDate(scheduledDate);
         req.setIdempotencyKey(idempotencyKey);
 
@@ -380,10 +380,10 @@ public class PaymentAssistantTool {
     @Tool(
             name = "monthlyPaymentSummary",
             description = """
-        Generate a monthly summary of a user's payments.
-        Includes totals, success/failure breakdown, and upcoming scheduled payments.
-        Read-only AI helper tool.
-        """
+                    Generate a monthly summary of a user's payments.
+                    Includes totals, success/failure breakdown, and upcoming scheduled payments.
+                    Read-only AI helper tool.
+                    """
     )
     public MonthlyPaymentSummary monthlyPaymentSummary(
             @ToolParam(description = "User identifier") UUID userId,
@@ -427,14 +427,14 @@ public class PaymentAssistantTool {
         );
 
         String summaryText = """
-            Monthly Payment Summary for %s:
-
-            - Total payments: %d
-            - Total amount: %s
-            - Successful: %s
-            - Failed: %s
-            - Scheduled: %s
-            """
+                Monthly Payment Summary for %s:
+                
+                - Total payments: %d
+                - Total amount: %s
+                - Successful: %s
+                - Failed: %s
+                - Scheduled: %s
+                """
                 .formatted(
                         yearMonth,
                         payments.size(),
@@ -460,9 +460,9 @@ public class PaymentAssistantTool {
     @Tool(
             name = "explainMonthlyPaymentSummary",
             description = """
-        Explain the user's monthly payment summary in plain English.
-        Helpful for conversational responses.
-        """
+                    Explain the user's monthly payment summary in plain English.
+                    Helpful for conversational responses.
+                    """
     )
     public String explainMonthlyPaymentSummary(
             @ToolParam(description = "User identifier") UUID userId,
@@ -471,13 +471,13 @@ public class PaymentAssistantTool {
         MonthlyPaymentSummary summary = monthlyPaymentSummary(userId, month);
 
         return """
-        📊 Your payment summary for %s:
-
-        You made %d payments totaling %s.
-        %s was successfully paid.
-        %s failed.
-        %s is scheduled for future execution.
-        """
+                📊 Your payment summary for %s:
+                
+                You made %d payments totaling %s.
+                %s was successfully paid.
+                %s failed.
+                %s is scheduled for future execution.
+                """
                 .formatted(
                         summary.month(),
                         summary.totalPayments(),
@@ -488,14 +488,13 @@ public class PaymentAssistantTool {
                 );
     }
 
-
     @Tool(
             name = "detectSpendingTrend",
             description = """
-        Detect month-over-month spending trends for a user.
-        Identifies whether spending is increasing, decreasing, or stable.
-        Read-only AI helper tool.
-        """
+                    Detect month-over-month spending trends for a user.
+                    Identifies whether spending is increasing, decreasing, or stable.
+                    Read-only AI helper tool.
+                    """
     )
     public SpendingTrendReport detectSpendingTrend(
             @ToolParam(description = "User identifier") UUID userId,
@@ -546,12 +545,12 @@ public class PaymentAssistantTool {
         }
 
         String summary = """
-            Spending trend for %s:
-            - Current month spend: %s
-            - Previous month spend: %s
-            - Change: %s%%
-            Trend: %s
-            """
+                Spending trend for %s:
+                - Current month spend: %s
+                - Previous month spend: %s
+                - Change: %s%%
+                Trend: %s
+                """
                 .formatted(
                         current,
                         currentSpend,
@@ -576,10 +575,10 @@ public class PaymentAssistantTool {
     @Tool(
             name = "categoryWiseSpendSummary",
             description = """
-        Show category-wise spending (utilities, rent, etc.) for a given month.
-        Uses bill category mapping for accurate classification.
-        Read-only AI helper tool.
-        """
+                    Show category-wise spending (utilities, rent, etc.) for a given month.
+                    Uses bill category mapping for accurate classification.
+                    Read-only AI helper tool.
+                    """
     )
     public CategorySpendSummary categoryWiseSpendSummary(
             @ToolParam(description = "User identifier") UUID userId,

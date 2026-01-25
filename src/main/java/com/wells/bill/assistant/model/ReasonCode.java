@@ -21,7 +21,7 @@ public enum ReasonCode {
     // Provider
     EXACT_KEYWORD_MATCH,
 
-    // Category
-    CATEGORY_KEYWORD_MATCHED
+    DATE_RANGE_PARSED, // Category
+    MONTH_YEAR_INFERRED, CATEGORY_KEYWORD_MATCHED
 }
 

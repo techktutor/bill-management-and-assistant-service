@@ -2,6 +2,8 @@ package com.wells.bill.assistant.util;
 
 import com.wells.bill.assistant.entity.BillEntity;
 import com.wells.bill.assistant.model.BillDetail;
+import com.wells.bill.assistant.model.DateRange;
+import com.wells.bill.assistant.model.Money;
 
 public final class BillMapper {
 
@@ -9,6 +11,14 @@ public final class BillMapper {
     }
 
     public static BillDetail toDetail(BillEntity b) {
+        DateRange billingPeriod = new DateRange(
+                b.getBillingStartDate(),
+                b.getBillingEndDate()
+        );
+        Money amountDue = new Money(
+                b.getAmountDue(),
+                CurrencyUtil.fromSymbol(b.getCurrency())
+        );
         return new BillDetail(
                 b.getId(),
                 b.getUserId(),
@@ -17,11 +27,9 @@ public final class BillMapper {
                 b.getProviderName(),
                 b.getServiceNumber(),
                 b.getBillCategory(),
-                b.getBillingStartDate(),
-                b.getBillingEndDate(),
                 b.getDueDate(),
-                b.getAmountDue(),
-                b.getCurrency(),
+                billingPeriod,
+                amountDue,
                 b.getStatus(),
                 b.getPaymentId(),
                 b.getIngestedAt(),
@@ -42,11 +50,11 @@ public final class BillMapper {
         b.setProviderName(d.providerName());
         b.setServiceNumber(d.serviceNumber());
         b.setBillCategory(d.billCategory());
-        b.setBillingStartDate(d.billingStartDate());
-        b.setBillingEndDate(d.billingEndDate());
+        b.setBillingStartDate(null != d.billingPeriod() ? d.billingPeriod().start() : null);
+        b.setBillingEndDate(null != d.billingPeriod() ? d.billingPeriod().end() : null);
         b.setDueDate(d.dueDate());
-        b.setAmountDue(d.amountDue());
-        b.setCurrency(d.currency());
+        b.setAmountDue(d.amountDue().amount());
+        b.setCurrency(d.amountDue().currency().getSymbol());
         b.setConfidenceScore(d.confidenceScore());
         b.setConfidenceDecision(d.confidenceDecision());
 

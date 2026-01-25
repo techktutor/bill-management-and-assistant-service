@@ -3,7 +3,6 @@ package com.wells.bill.assistant.model;
 import com.wells.bill.assistant.entity.BillCategory;
 import com.wells.bill.assistant.entity.BillStatus;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -20,13 +19,11 @@ public record BillDetail(
 
         // Billing
         BillCategory billCategory,
-        LocalDate billingStartDate,
-        LocalDate billingEndDate,
         LocalDate dueDate,
+        DateRange billingPeriod,
 
         // Amount
-        BigDecimal amountDue,
-        String currency,
+        Money amountDue,
 
         // Status & Payment
         BillStatus status,
@@ -47,7 +44,6 @@ public record BillDetail(
 
     /* ---------- Defaults & validation ---------- */
     public BillDetail {
-        if (currency == null) currency = "INR";
         if (status == null) status = BillStatus.UPLOADED;
         if (createdAt == null) createdAt = Instant.now();
         if (updatedAt == null) updatedAt = Instant.now();
@@ -70,12 +66,10 @@ public record BillDetail(
         private String serviceNumber;
 
         private BillCategory billCategory;
-        private LocalDate billingStartDate;
-        private LocalDate billingEndDate;
         private LocalDate dueDate;
+        private DateRange billingPeriod;
 
-        private BigDecimal amountDue;
-        private String currency = "INR";
+        private Money amountDue;
 
         private BillStatus status = BillStatus.UPLOADED;
         private UUID paymentId;
@@ -126,28 +120,18 @@ public record BillDetail(
             return this;
         }
 
-        public Builder billingStartDate(LocalDate billingStartDate) {
-            this.billingStartDate = billingStartDate;
-            return this;
-        }
-
-        public Builder billingEndDate(LocalDate billingEndDate) {
-            this.billingEndDate = billingEndDate;
-            return this;
-        }
-
         public Builder dueDate(LocalDate dueDate) {
             this.dueDate = dueDate;
             return this;
         }
 
-        public Builder amountDue(BigDecimal amountDue) {
-            this.amountDue = amountDue;
+        public Builder billingPeriod(DateRange billingPeriod) {
+            this.billingPeriod = billingPeriod;
             return this;
         }
 
-        public Builder currency(String currency) {
-            this.currency = currency;
+        public Builder amountDue(Money amountDue) {
+            this.amountDue = amountDue;
             return this;
         }
 
@@ -190,11 +174,9 @@ public record BillDetail(
                     providerName,
                     serviceNumber,
                     billCategory,
-                    billingStartDate,
-                    billingEndDate,
                     dueDate,
+                    billingPeriod,
                     amountDue,
-                    currency,
                     status,
                     paymentId,
                     ingestedAt,
