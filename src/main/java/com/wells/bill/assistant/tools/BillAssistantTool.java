@@ -1,10 +1,8 @@
 package com.wells.bill.assistant.tools;
 
-import com.wells.bill.assistant.model.BillStatus;
-import com.wells.bill.assistant.model.BillAnomalyReport;
-import com.wells.bill.assistant.model.BillDetail;
-import com.wells.bill.assistant.model.BillExplanation;
+import com.wells.bill.assistant.model.*;
 import com.wells.bill.assistant.service.BillService;
+import com.wells.bill.assistant.store.ContextStoreInMemory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
@@ -26,6 +24,7 @@ import java.util.stream.Collectors;
 public class BillAssistantTool {
 
     private final BillService billService;
+    private final ContextStoreInMemory contextStore;
 
     /* =====================================================
      * 1️⃣ READ-ONLY BILL QUERIES (SAFE FOR AI)
@@ -36,20 +35,27 @@ public class BillAssistantTool {
             description = "Get complete details of a specific bill using its billId."
     )
     public BillDetail getBillDetails(
-            @ToolParam(description = "Unique bill identifier") UUID billId
+            @ToolParam(description = "Bill Provider Name") String billName
     ) {
-        log.info("AI Tool: fetching bill details for billId={}", billId);
-        return billService.getBill(billId);
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
+        log.info("BillAssistantTool: Fetching bill details for billName={}", billName);
+
+        return getDetails(userId, billName);
     }
 
     @Tool(
-            name = "listAllBillsForUser",
+            name = "listAllBills",
             description = "List all bills for a given user. Use pagination at the UI layer if needed."
     )
-    public List<BillDetail> listAllBillsForUser(
-            @ToolParam(description = "User identifier") UUID userId
-    ) {
-        log.info("AI Tool: listing all bills for userId={}", userId);
+    public List<BillDetail> listAllBills() {
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+        UUID conversationId = context.conversationId();
+
+        log.info("BillAssistantTool: listAllBills for userId={} and conversationId={}", userId, conversationId);
+
         return billService.getBills(userId, Pageable.unpaged()).getContent();
     }
 
@@ -60,24 +66,55 @@ public class BillAssistantTool {
                     Includes bills in UPLOADED, INGESTED, VERIFIED, or OVERDUE states.
                     """
     )
-    public List<BillDetail> listUnpaidBills(
-            @ToolParam(description = "User identifier") UUID userId
-    ) {
-        log.info("AI Tool: listing unpaid bills for userId={}", userId);
+    public List<BillDetail> listUnpaidBills() {
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+        UUID conversationId = context.conversationId();
+
+        log.info("BillAssistantTool: listUnpaidBills for userId={} and conversationId={}", userId, conversationId);
+
         return billService.getUnpaidBills(userId);
     }
 
     @Tool(
             name = "listBillsDueSoon",
             description = """
+                    Find unpaid bills that are due soon.
+                    Useful for reminders and alerts.
+                    """
+    )
+    public List<BillDetail> listBillsDueSoon() {
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+        UUID conversationId = context.conversationId();
+
+        log.info("BillAssistantTool: listBillsDueSoon for userId={} and conversationId={}", userId, conversationId);
+
+        LocalDate endDate = LocalDate.now().plusDays(15);
+
+        return billService.getUnpaidBills(userId)
+                .stream()
+                .filter(b ->
+                        b.dueDate() != null &&
+                                !b.dueDate().isAfter(endDate)
+                )
+                .toList();
+    }
+
+    @Tool(
+            name = "listBillsDueAfter",
+            description = """
                     Find unpaid bills that are due within the next N days.
                     Useful for reminders and alerts.
                     """
     )
-    public List<BillDetail> listBillsDueSoon(
-            @ToolParam(description = "User identifier") UUID userId,
+    public List<BillDetail> listBillsDueAfter(
             @ToolParam(description = "Number of days from today") int days
     ) {
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+        log.info("BillAssistantTool: listBillsDueAfter for userId={}", userId);
+
         LocalDate endDate = LocalDate.now().plusDays(days);
 
         return billService.getUnpaidBills(userId)
@@ -96,9 +133,12 @@ public class BillAssistantTool {
                     Helps summarize spending by service provider.
                     """
     )
-    public Map<String, List<BillDetail>> groupUnpaidBillsByProvider(
-            @ToolParam(description = "User identifier") UUID userId
-    ) {
+    public Map<String, List<BillDetail>> groupUnpaidBillsByProvider() {
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
+        log.info("BillAssistantTool: groupUnpaidBillsByProvider for userId={}", userId);
+
         return billService.getUnpaidBills(userId)
                 .stream()
                 .collect(Collectors.groupingBy(
@@ -121,26 +161,14 @@ public class BillAssistantTool {
                     """
     )
     public BillDetail markBillAsVerified(
-            @ToolParam(description = "Bill identifier") UUID billId
+            @ToolParam(description = "Bill provider name") String providerName
     ) {
-        log.warn("AI Tool: verifying billId={}", billId);
-        return billService.markVerified(billId);
-    }
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
 
-    @Tool(
-            name = "markBillAsPaid",
-            description = """
-                    Mark a bill as PAID after successful payment.
-                    Requires a valid paymentId.
-                    """
-    )
-    public String markBillAsPaid(
-            @ToolParam(description = "Bill identifier") UUID billId,
-            @ToolParam(description = "Payment identifier") UUID paymentId
-    ) {
-        log.warn("AI Tool: marking bill as PAID billId={}, paymentId={}", billId, paymentId);
-        billService.markPaid(billId, paymentId);
-        return "Bill marked as PAID successfully.";
+        log.info("BillAssistantTool: verifying providerName={}", providerName);
+
+        return billService.markVerified(getDetails(userId, providerName).id());
     }
 
     @Tool(
@@ -155,11 +183,14 @@ public class BillAssistantTool {
                     """
     )
     public BillExplanation explainBill(
-            @ToolParam(description = "Unique bill identifier") UUID billId
+            @ToolParam(description = "Bill provider name") String providerName
     ) {
-        log.info("AI Tool: explaining bill billId={}", billId);
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
 
-        BillDetail bill = billService.getBill(billId);
+        log.info("BillAssistantTool: explaining bill providerName={}", providerName);
+
+        BillDetail bill = getDetails(userId, providerName);
 
         boolean overdue = bill.status() == BillStatus.OVERDUE;
         boolean payable = bill.status() != BillStatus.PAID
@@ -212,9 +243,12 @@ public class BillAssistantTool {
                     """
     )
     public String explainWhyBillIsHigh(
-            @ToolParam(description = "Bill identifier") UUID billId
+            @ToolParam(description = "Bill provider name") String providerName
     ) {
-        BillDetail bill = billService.getBill(billId);
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
+        BillDetail bill = getDetails(userId, providerName);
 
         StringBuilder explanation = new StringBuilder(
                 "Here are possible reasons this bill might be higher than expected:\n"
@@ -246,9 +280,12 @@ public class BillAssistantTool {
                     """
     )
     public String suggestPaymentPriority(
-            @ToolParam(description = "Bill identifier") UUID billId
+            @ToolParam(description = "Bill provider name") String providerName
     ) {
-        BillDetail bill = billService.getBill(billId);
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
+        BillDetail bill = getDetails(userId, providerName);
 
         if (bill.status() == BillStatus.OVERDUE) {
             return "HIGH priority – this bill is overdue.";
@@ -273,9 +310,12 @@ public class BillAssistantTool {
                     """
     )
     public String generatePaymentReminderMessage(
-            @ToolParam(description = "Bill identifier") UUID billId
+            @ToolParam(description = "Bill provider name") String providerName
     ) {
-        BillDetail bill = billService.getBill(billId);
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
+        BillDetail bill = getDetails(userId, providerName);
 
         return """
                 Reminder: Your %s bill from %s amounting to %s %s
@@ -300,9 +340,12 @@ public class BillAssistantTool {
                     """
     )
     public List<String> explainBillAsBulletPoints(
-            @ToolParam(description = "Bill identifier") UUID billId
+            @ToolParam(description = "Bill provider name") String providerName
     ) {
-        BillDetail bill = billService.getBill(billId);
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
+        BillDetail bill = getDetails(userId, providerName);
 
         return List.of(
                 "Provider: " + bill.providerName(),
@@ -323,10 +366,13 @@ public class BillAssistantTool {
                     """
     )
     public String explainBillInRegionalLanguage(
-            @ToolParam(description = "Bill identifier") UUID billId,
+            @ToolParam(description = "Bill provider name") String providerName,
             @ToolParam(description = "Language code (en, hi)") String language
     ) {
-        BillDetail bill = billService.getBill(billId);
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
+        BillDetail bill = getDetails(userId, providerName);
 
         return switch (language.toLowerCase()) {
             case "hi" -> """
@@ -369,9 +415,10 @@ public class BillAssistantTool {
                     This is an estimate and does not affect any data.
                     """
     )
-    public String forecastMonthlySpend(
-            @ToolParam(description = "User identifier") UUID userId
-    ) {
+    public String forecastMonthlySpend() {
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
         List<BillDetail> unpaid = billService.getUnpaidBills(userId);
 
         if (unpaid.isEmpty()) {
@@ -402,10 +449,12 @@ public class BillAssistantTool {
                     """
     )
     public BillAnomalyReport detectBillAnomaly(
-            @ToolParam(description = "User identifier") UUID userId,
-            @ToolParam(description = "Bill identifier") UUID billId
+            @ToolParam(description = "Bill provider name") String providerName
     ) {
-        BillDetail current = billService.getBill(billId);
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
+        BillDetail current = getDetails(userId, providerName);
         List<BillDetail> unpaid = billService.getUnpaidBills(userId);
 
         List<String> signals = new ArrayList<>();
@@ -415,7 +464,7 @@ public class BillAssistantTool {
          * 1️⃣ Amount anomaly
          * ----------------------------------- */
         double averageAmount = unpaid.stream()
-                .filter(b -> !b.id().equals(billId))
+                .filter(b -> !b.id().equals(current.id()))
                 .mapToDouble(b -> b.amountDue().amount().doubleValue())
                 .average()
                 .orElse(current.amountDue().amount().doubleValue());
@@ -484,4 +533,14 @@ public class BillAssistantTool {
         );
     }
 
+    private BillDetail getDetails(UUID userId, String providerName) {
+        List<BillDetail> bills = billService.findBillsByProviderName(userId, providerName);
+        if (bills.size() > 1) {
+            log.warn("Multiple bills found for provider name={}", providerName);
+        } else if (bills.isEmpty()) {
+            log.error("No bills found for provider name={}", providerName);
+            throw new IllegalArgumentException("No bills found for provider name: " + providerName);
+        }
+        return bills.getFirst();
+    }
 }

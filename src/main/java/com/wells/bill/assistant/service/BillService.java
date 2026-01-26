@@ -208,4 +208,12 @@ public class BillService {
                         )
                 );
     }
+
+    public List<BillDetail> findBillsByProviderName(UUID userId, String providerName) {
+        log.info("Finding bills for userId= {} with provider name: {}", userId, providerName);
+        return billRepository.findBillsByUserAndProviderName(userId, providerName)
+                .stream()
+                .map(BillMapper::toDetail)
+                .toList();
+    }
 }

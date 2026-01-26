@@ -1,11 +1,10 @@
 package com.wells.bill.assistant.tools;
 
-import com.wells.bill.assistant.model.BillStatus;
-import com.wells.bill.assistant.model.PaymentType;
 import com.wells.bill.assistant.model.*;
 import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.PaymentService;
-import com.wells.bill.assistant.store.PaymentConfirmationStore;
+import com.wells.bill.assistant.store.ContextStoreInMemory;
+import com.wells.bill.assistant.store.PaymentConfirmationStoreInMemory;
 import com.wells.bill.assistant.util.IdempotencyKeyGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,29 +26,35 @@ public class PaymentAssistantTool {
 
     private final BillService billService;
     private final PaymentService paymentService;
-    private final PaymentConfirmationStore confirmationStore;
+    private final ContextStoreInMemory contextStore;
+    private final PaymentConfirmationStoreInMemory confirmationStore;
 
     /* =====================================================
      * 1️⃣ REQUEST PAYMENT CONFIRMATION (READ-ONLY)
      * ===================================================== */
 
     @Tool(
-            name = "requestPaymentConfirmation",
+            name = "paymentRequest",
             description = """
                     Request explicit user confirmation before paying a bill.
                     Confirmation expires automatically after 5 minutes.
                     This tool does NOT create a payment intent.
                     """
     )
-    public PaymentConfirmation requestPaymentConfirmation(
-            @ToolParam(description = "Bill identifier") UUID billId,
-            @ToolParam(description = "User identifier") UUID userId,
+    public PaymentConfirmation paymentRequest(
+            @ToolParam(description = "Bill Provider Name") String billName,
             @ToolParam(description = "Schedule payment after N days (0 = immediate)") int scheduledAfterDays
     ) {
-        BillDetail bill = billService.getBill(billId);
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
+        log.info("PaymentAssistantTool: Creating payment request for userId={}, billName={}, scheduledAfterDays={}",
+                userId, billName, scheduledAfterDays
+        );
+        BillDetail bill = getDetails(userId, billName);
 
         if (bill.status() != BillStatus.VERIFIED) {
-            throw new IllegalStateException("Bill is not ready for payment.");
+            throw new IllegalArgumentException("Bill is not ready for payment.");
         }
 
         LocalDate scheduledDate =
@@ -59,17 +64,22 @@ public class PaymentAssistantTool {
 
         String token = UUID.randomUUID().toString();
 
-        confirmationStore.save(
+        confirmationStore.save(userId,
                 new PaymentConfirmationToken(
                         token,
-                        billId,
+                        bill.id(),
                         userId,
+                        scheduledDate,
                         Instant.now().plus(CONFIRMATION_TTL)
                 )
         );
 
+        log.info("Payment confirmation requested: billId={}, userId={}, scheduledDate={}, token={}",
+                bill.id(), userId, scheduledDate, token
+        );
+
         return new PaymentConfirmation(
-                billId,
+                bill.id(),
                 userId,
                 bill.amountDue().amount(),
                 bill.amountDue().currency().getSymbol(),
@@ -105,30 +115,34 @@ public class PaymentAssistantTool {
                     """
     )
     public String confirmAndPayBill(
-            @ToolParam(description = "Bill identifier") UUID billId,
-            @ToolParam(description = "User identifier") UUID userId,
-            @ToolParam(description = "Confirmation token") String confirmationToken,
-            @ToolParam(description = "Scheduled payment date (null for immediate)") LocalDate scheduledDate
+            @ToolParam(description = "Confirmation token") String confirmationToken
     ) {
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
+        log.info("Confirming payment for userId={}, confirmationToken={}",
+                userId, confirmationToken
+        );
+
         PaymentConfirmationToken stored =
-                confirmationStore.find(confirmationToken)
+                confirmationStore.find(userId)
                         .orElseThrow(() ->
-                                new IllegalStateException(
+                                new IllegalArgumentException(
                                         "Confirmation token expired or invalid."
                                 )
                         );
 
-        if (!stored.billId().equals(billId) ||
+        if (!stored.token().equals(confirmationToken) ||
                 !stored.userId().equals(userId)) {
-            throw new IllegalStateException(
+            throw new IllegalArgumentException(
                     "Confirmation token does not match bill or user."
             );
         }
 
         // One-time use
-        confirmationStore.delete(confirmationToken);
+        confirmationStore.delete(userId);
 
-        BillDetail bill = billService.getBill(billId);
+        BillDetail bill = billService.getBill(stored.billId());
 
         String idempotencyKey = IdempotencyKeyGenerator.generate(
                 userId,
@@ -138,25 +152,30 @@ public class PaymentAssistantTool {
         );
 
         PaymentIntentRequest req = new PaymentIntentRequest();
-        req.setBillId(billId);
+        req.setBillId(bill.id());
         req.setUserId(userId);
         req.setAmount(bill.amountDue().amount());
         req.setCurrency(bill.amountDue().currency().getSymbol());
-        req.setScheduledDate(scheduledDate);
+        req.setScheduledDate(stored.scheduledDate());
         req.setIdempotencyKey(idempotencyKey);
+        req.setExecutedBy(ExecutedBy.AI_SUGGESTED);
+
+        log.info("Confirming and executing payment: billId={}, userId={}, amount={}, currency={}, scheduledDate={}",
+                bill.id(), userId, bill.amountDue().amount(),
+                bill.amountDue().currency().getSymbol(),
+                stored.scheduledDate()
+        );
 
         var intent = paymentService.createPaymentIntent(req);
 
-        billService.markPaid(billId, intent.getPaymentId());
-
         log.info(
                 "Payment executed via AI tool: billId={}, paymentId={}, scheduledDate={}",
-                billId, intent.getPaymentId(), scheduledDate
+                intent.getBillId(), intent.getPaymentId(), intent.getScheduledDate()
         );
 
-        return scheduledDate == null
+        return intent.getScheduledDate() == null
                 ? "Payment completed successfully."
-                : "Payment scheduled successfully for " + scheduledDate + ".";
+                : "Payment scheduled successfully for " + intent.getScheduledDate() + ".";
     }
 
     @Tool(
@@ -262,9 +281,10 @@ public class PaymentAssistantTool {
                     Read-only helper tool for payment history.
                     """
     )
-    public List<PaymentResponse> listPaymentsForUser(
-            @ToolParam(description = "User identifier") UUID userId
-    ) {
+    public List<PaymentResponse> listPaymentsForUser() {
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
         return paymentService.getPaymentsForUser(userId);
     }
 
@@ -313,9 +333,11 @@ public class PaymentAssistantTool {
                     """
     )
     public PaymentAnomalyReport paymentAnomalyDetection(
-            @ToolParam(description = "User identifier") UUID userId,
             @ToolParam(description = "Payment identifier") UUID paymentId
     ) {
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
         PaymentResponse current = paymentService.getPaymentById(paymentId);
         List<PaymentResponse> allPayments = paymentService.getPaymentsForUser(userId);
 
@@ -386,9 +408,11 @@ public class PaymentAssistantTool {
                     """
     )
     public MonthlyPaymentSummary monthlyPaymentSummary(
-            @ToolParam(description = "User identifier") UUID userId,
             @ToolParam(description = "Month in YYYY-MM format") String month
     ) {
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
+
         YearMonth yearMonth = YearMonth.parse(month);
 
         List<PaymentResponse> payments =
@@ -465,10 +489,9 @@ public class PaymentAssistantTool {
                     """
     )
     public String explainMonthlyPaymentSummary(
-            @ToolParam(description = "User identifier") UUID userId,
             @ToolParam(description = "Month in YYYY-MM format") String month
     ) {
-        MonthlyPaymentSummary summary = monthlyPaymentSummary(userId, month);
+        MonthlyPaymentSummary summary = monthlyPaymentSummary(month);
 
         return """
                 📊 Your payment summary for %s:
@@ -497,11 +520,13 @@ public class PaymentAssistantTool {
                     """
     )
     public SpendingTrendReport detectSpendingTrend(
-            @ToolParam(description = "User identifier") UUID userId,
             @ToolParam(description = "Month in YYYY-MM format") String month
     ) {
         YearMonth current = YearMonth.parse(month);
         YearMonth previous = current.minusMonths(1);
+
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
 
         List<PaymentResponse> payments =
                 paymentService.getPaymentsForUser(userId);
@@ -581,11 +606,12 @@ public class PaymentAssistantTool {
                     """
     )
     public CategorySpendSummary categoryWiseSpendSummary(
-            @ToolParam(description = "User identifier") UUID userId,
             @ToolParam(description = "Month in YYYY-MM format") String month
     ) {
-        YearMonth yearMonth = YearMonth.parse(month);
+        Context context = contextStore.getExistingContext();
+        UUID userId = context.userId();
 
+        YearMonth yearMonth = YearMonth.parse(month);
         Map<String, BigDecimal> categoryTotals = new HashMap<>();
 
         List<PaymentResponse> payments =
@@ -625,4 +651,14 @@ public class PaymentAssistantTool {
         );
     }
 
+    private BillDetail getDetails(UUID userId, String providerName) {
+        List<BillDetail> bills = billService.findBillsByProviderName(userId, providerName);
+        if (bills.size() > 1) {
+            log.warn("Multiple bills found for provider name={}", providerName);
+        } else if (bills.isEmpty()) {
+            log.error("No bills found for provider name={}", providerName);
+            throw new IllegalArgumentException("No bills found for provider name: " + providerName);
+        }
+        return bills.getFirst();
+    }
 }

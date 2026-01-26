@@ -19,7 +19,6 @@ public class OrchestratorService {
     private static final String DEFAULT_RESPONSE = "I’m sorry, I couldn’t process your request safely. Please try again.";
 
     private final ChatClient chatClient;
-
     private final BillAssistantTool billAssistantTool;
     private final PaymentAssistantTool paymentAssistantTool;
 

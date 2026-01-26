@@ -27,7 +27,8 @@ import java.util.UUID;
                 @Index(name = "idx_bill_category", columnList = "category"),
                 @Index(name = "idx_bill_due_date", columnList = "due_date"),
                 @Index(name = "idx_bill_status", columnList = "status"),
-                @Index(name = "idx_bill_payment", columnList = "payment_id")
+                @Index(name = "idx_bill_payment", columnList = "payment_id"),
+                @Index(name = "idx_bill_provider_name", columnList = "provider_name")
         }
 )
 @Getter

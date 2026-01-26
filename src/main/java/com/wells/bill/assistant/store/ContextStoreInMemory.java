@@ -1,5 +1,6 @@
 package com.wells.bill.assistant.store;
 
+import com.wells.bill.assistant.exception.InvalidContextException;
 import com.wells.bill.assistant.model.Context;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +14,7 @@ public class ContextStoreInMemory {
 
     private final ConcurrentHashMap<String, Context> store = new ConcurrentHashMap<>();
 
-    public Context get(String key) {
+    public Context getOrCreate(String key) {
         long now = System.currentTimeMillis();
 
         return store.compute(key, (k, existing) -> {
@@ -40,5 +41,9 @@ public class ContextStoreInMemory {
 
     private boolean isExpired(Context context, long now) {
         return (now - context.lastAccessTime()) > EXPIRY_MS;
+    }
+
+    public Context getExistingContext() {
+        return store.values().stream().findFirst().orElseThrow(() -> new InvalidContextException("No context found"));
     }
 }

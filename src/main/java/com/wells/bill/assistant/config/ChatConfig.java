@@ -38,8 +38,8 @@ public class ChatConfig {
                 .defaultAdvisors(
                         new SimpleLoggerAdvisor(),
                         new SafeGuardAdvisor(List.of()),
-                        MessageChatMemoryAdvisor.builder(chatMemory).build(),
-                        QuestionAnswerAdvisor.builder(vectorStore).build()
+                        MessageChatMemoryAdvisor.builder(chatMemory).build()
+                        //QuestionAnswerAdvisor.builder(vectorStore).build()
                 )
                 .build();
     }

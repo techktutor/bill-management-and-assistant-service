@@ -46,7 +46,7 @@ public class IngestController {
         contextKey = getContextKey(contextKey, response);
 
         // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.get(contextKey);
+        Context context = contextStore.getOrCreate(contextKey);
 
         if (files == null || files.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(

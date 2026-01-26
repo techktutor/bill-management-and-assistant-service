@@ -1,5 +1,6 @@
 package com.wells.bill.assistant.entity;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.wells.bill.assistant.model.ExecutedBy;
 import com.wells.bill.assistant.model.PaymentStatus;
 import com.wells.bill.assistant.model.PaymentType;
@@ -8,7 +9,9 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -83,14 +86,15 @@ public class PaymentEntity {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    @Column(name = "payment_reference", nullable = false, unique = true)
+    @Column(name = "payment_reference")
     private String paymentReference;
 
     @Column(name = "gateway_reference_id")
     private String gatewayReferenceId;
 
-    @Column(name = "gateway_payload", columnDefinition = "jsonb")
-    private String gatewayPayload;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "gateway_payload")
+    private JsonNode gatewayPayload;
 
     @Column(name = "failure_reason")
     private String failureReason;

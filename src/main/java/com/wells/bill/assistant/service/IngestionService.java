@@ -56,19 +56,14 @@ public class IngestionService {
                 putIfNotNull(metadata, "ingestedAt", now.toString());
                 putIfNotNull(metadata, "ingestionVersion", "v1");
                 putIfNotNull(metadata, "billStatus", bill.getStatus().toString());
-                putIfNotNull(metadata, "billCategory", bill.getBillCategory().name());
-
-                putIfNotNull(metadata, "amountDue", bill.getAmountDue() != null ? bill.getAmountDue().toString() : null);
-                putIfNotNull(metadata, "dueDate", bill.getDueDate() != null ? bill.getDueDate().toString() : null);
-
-                putIfNotNull(metadata, "consumerName", bill.getConsumerName());
-                putIfNotNull(metadata, "consumerNumber", bill.getConsumerNumber());
-                putIfNotNull(metadata, "providerName", bill.getProviderName());
+                putIfNotNull(metadata, "billCategory", null != bill.getBillCategory() ? bill.getBillCategory().name() : "Unknown");
+                putIfNotNull(metadata, "amountDue", bill.getAmountDue().toString());
+                putIfNotNull(metadata, "dueDate", bill.getDueDate().toString());
+                putIfNotNull(metadata, "consumerName", null != bill.getConsumerName() ? bill.getConsumerName() : "Unknown");
+                putIfNotNull(metadata, "consumerNumber", null != bill.getConsumerNumber() ? bill.getConsumerNumber() : "Unknown");
+                putIfNotNull(metadata, "providerName", null != bill.getProviderName() ? bill.getProviderName() : "Unknown");
                 putIfNotNull(metadata, "confidenceScore", bill.getConfidenceScore());
-                putIfNotNull(metadata, "confidenceDecision",
-                        bill.getConfidenceDecision() != null
-                                ? bill.getConfidenceDecision().name()
-                                : null);
+                putIfNotNull(metadata, "confidenceDecision", bill.getConfidenceDecision().name());
 
                 Document enriched = Document.builder()
                         .id(chunk.getId())

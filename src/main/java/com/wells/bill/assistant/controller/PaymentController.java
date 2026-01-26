@@ -40,7 +40,7 @@ public class PaymentController {
         contextKey = getContextKey(contextKey, response);
 
         // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.get(contextKey);
+        Context context = contextStore.getOrCreate(contextKey);
 
         req.setUserId(context.userId());
         String idempotencyKey = IdempotencyKeyGenerator.generate(
@@ -68,7 +68,7 @@ public class PaymentController {
         contextKey = getContextKey(contextKey, response);
 
         // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.get(contextKey);
+        Context context = contextStore.getOrCreate(contextKey);
 
         req.setUserId(context.userId());
         req.setPaymentId(paymentId);
@@ -89,7 +89,7 @@ public class PaymentController {
         contextKey = getContextKey(contextKey, response);
 
         // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.get(contextKey);
+        Context context = contextStore.getOrCreate(contextKey);
 
         req.setUserId(context.userId());
         if (req.getScheduledDate() == null) {
@@ -161,7 +161,7 @@ public class PaymentController {
         contextKey = getContextKey(contextKey, response);
 
         // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.get(contextKey);
+        Context context = contextStore.getOrCreate(contextKey);
 
         paymentRequest.setUserId(context.userId());
         paymentRequest.setExecutedBy(ExecutedBy.USER);

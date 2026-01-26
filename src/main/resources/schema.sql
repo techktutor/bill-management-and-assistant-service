@@ -63,6 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_bill_category ON bills (category);
 CREATE INDEX IF NOT EXISTS idx_bill_due_date ON bills (due_date);
 CREATE INDEX IF NOT EXISTS idx_bill_status ON bills (status);
 CREATE INDEX IF NOT EXISTS idx_bill_payment ON bills (payment_id);
+CREATE INDEX IF NOT EXISTS idx_bill_provider_name ON bills (provider_name);
 
 CREATE TABLE IF NOT EXISTS payments (
     payment_id UUID PRIMARY KEY,
@@ -86,7 +87,7 @@ CREATE TABLE IF NOT EXISTS payments (
     execute_at TIMESTAMP WITH TIME ZONE,
     cancelled_at TIMESTAMP WITH TIME ZONE,
 
-    payment_reference VARCHAR(255) NOT NULL UNIQUE,
+    payment_reference VARCHAR(255) UNIQUE,
     gateway_reference_id VARCHAR(255),
 
     gateway_payload JSONB,

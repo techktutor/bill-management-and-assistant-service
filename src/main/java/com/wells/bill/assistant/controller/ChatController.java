@@ -38,7 +38,7 @@ public class ChatController {
         contextKey = getContextKey(contextKey, response);
 
         // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.get(contextKey);
+        Context context = contextStore.getOrCreate(contextKey);
 
         log.info("Received chat request from User= {}, conversationId= {}", context.userId(), context.conversationId());
 
