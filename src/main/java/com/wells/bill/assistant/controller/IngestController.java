@@ -4,6 +4,7 @@ import com.wells.bill.assistant.exception.InvalidUserInputException;
 import com.wells.bill.assistant.model.BillDetail;
 import com.wells.bill.assistant.model.BillParseResult;
 import com.wells.bill.assistant.model.Context;
+import com.wells.bill.assistant.model.DataQualityDecision;
 import com.wells.bill.assistant.service.BillParser;
 import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.IngestionService;
@@ -21,7 +22,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 
-import static com.wells.bill.assistant.model.DataQualityDecision.HIGH_CONFIDENCE;
 import static com.wells.bill.assistant.util.CookieGenerator.CONTEXT_COOKIE;
 import static com.wells.bill.assistant.util.CookieGenerator.getContextKey;
 
@@ -97,6 +97,11 @@ public class IngestController {
 
         BillDetail resultBill = parseResult.bill();
 
+        int confidenceScore = parseResult.overallConfidence();
+        DataQualityDecision decision = DataQualityDecision.fromScore(confidenceScore);
+        log.info("{} confidence ({}) in extracted bill details: {}",
+                decision, confidenceScore, resultBill.id());
+
         resultBill = BillDetail.builder()
                 .amountDue(resultBill.amountDue())
                 .dueDate(resultBill.dueDate())
@@ -106,8 +111,8 @@ public class IngestController {
                 .providerName(resultBill.providerName())
                 .billCategory(resultBill.billCategory())
                 .userId(userId)
-                .confidenceScore(parseResult.overallConfidence())
-                .confidenceDecision(HIGH_CONFIDENCE)
+                .confidenceScore(confidenceScore)
+                .confidenceDecision(decision)
                 .build();
 
         BillDetail savedBill = billService.createBill(resultBill);
