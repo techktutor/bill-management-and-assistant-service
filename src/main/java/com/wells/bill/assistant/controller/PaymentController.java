@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import static com.wells.bill.assistant.util.CookieGenerator.CONTEXT_COOKIE;
@@ -144,6 +145,28 @@ public class PaymentController {
         PaymentResponse paymentResponse = paymentService.getPaymentById(paymentId);
         if (paymentResponse != null) {
             return ResponseEntity.ok(paymentResponse);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // -----------------------------
+    // Get Payments
+    // -----------------------------
+    @GetMapping
+    public ResponseEntity<List<PaymentResponse>> listPayments(
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+            HttpServletResponse response) {
+
+        // 1️⃣ Resolve key
+        contextKey = getContextKey(contextKey, response);
+
+        // 2️⃣ Load context (expires automatically after 10 min idle)
+        Context context = contextStore.getOrCreate(contextKey);
+
+        List<PaymentResponse> payments = paymentService.getPaymentsForUser(context.userId());
+        if (payments != null) {
+            return ResponseEntity.ok(payments);
         } else {
             return ResponseEntity.notFound().build();
         }

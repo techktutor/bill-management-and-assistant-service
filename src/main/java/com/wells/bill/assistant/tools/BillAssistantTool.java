@@ -168,7 +168,7 @@ public class BillAssistantTool {
 
         log.info("BillAssistantTool: verifying providerName={}", providerName);
 
-        return billService.markVerified(getDetails(userId, providerName).id());
+        return billService.markVerified(getDetails(userId, providerName).id(), userId);
     }
 
     @Tool(

@@ -31,9 +31,9 @@ public class BillService {
      * ===================================================== */
 
     @Transactional(readOnly = true)
-    public BillDetail getBill(UUID billId) {
+    public BillDetail getBill(UUID billId, UUID userId) {
         log.info("Fetching bill detail for billId={}", billId);
-        return BillMapper.toDetail(getEntityOrThrow(billId));
+        return BillMapper.toDetail(getEntityOrThrow(billId, userId));
     }
 
     @Transactional(readOnly = true)
@@ -78,8 +78,8 @@ public class BillService {
         );
     }
 
-    public BillDetail updateBill(UUID billId, BillDetail request) {
-        BillEntity existing = getEntityOrThrow(billId);
+    public BillDetail updateBill(UUID billId, UUID userId, BillDetail request) {
+        BillEntity existing = getEntityOrThrow(billId, userId);
 
         if (existing.getStatus() == BillStatus.PAID
                 || existing.getStatus() == BillStatus.CANCELLED) {
@@ -104,8 +104,8 @@ public class BillService {
         );
     }
 
-    public void deleteBill(UUID billId) {
-        BillEntity bill = getEntityOrThrow(billId);
+    public void deleteBill(UUID billId, UUID userId) {
+        BillEntity bill = getEntityOrThrow(billId, userId);
 
         if (bill.getStatus() == BillStatus.PAID) {
             throw new IllegalStateException("Paid bill cannot be deleted");
@@ -126,18 +126,18 @@ public class BillService {
      * 3️⃣ STATUS TRANSITIONS
      * ===================================================== */
 
-    public BillDetail markIngested(UUID billId) {
+    public BillDetail markIngested(UUID billId, UUID userId) {
         log.info("Marking billId={} as INGESTED", billId);
-        return transition(billId, BillStatus.INGESTED);
+        return transition(billId, userId, BillStatus.INGESTED);
     }
 
-    public BillDetail markVerified(UUID billId) {
+    public BillDetail markVerified(UUID billId, UUID userId) {
         log.info("Marking billId={} as VERIFIED", billId);
-        return transition(billId, BillStatus.VERIFIED);
+        return transition(billId, userId, BillStatus.VERIFIED);
     }
 
-    public void markPaid(UUID billId, UUID paymentId) {
-        BillEntity bill = getEntityOrThrow(billId);
+    public void markPaid(UUID billId, UUID paymentId, UUID userId) {
+        BillEntity bill = getEntityOrThrow(billId, userId);
 
         BillStateMachine.validateTransition(
                 bill.getStatus(),
@@ -182,8 +182,8 @@ public class BillService {
      * Internal Helpers
      * ===================================================== */
 
-    private BillDetail transition(UUID billId, BillStatus next) {
-        BillEntity bill = getEntityOrThrow(billId);
+    private BillDetail transition(UUID billId, UUID userId, BillStatus next) {
+        BillEntity bill = getEntityOrThrow(billId, userId);
 
         BillStateMachine.validateTransition(
                 bill.getStatus(),
@@ -199,9 +199,9 @@ public class BillService {
         );
     }
 
-    private BillEntity getEntityOrThrow(UUID billId) {
-        log.info("Fetching bill entity for billId={}", billId);
-        return billRepository.findById(billId)
+    private BillEntity getEntityOrThrow(UUID billId, UUID userId) {
+        log.info("Fetching bill entity for billId={} and userId={}", billId, userId);
+        return billRepository.findByIdAndUserId(billId, userId)
                 .orElseThrow(() ->
                         new IllegalArgumentException(
                                 "Bill not found: " + billId

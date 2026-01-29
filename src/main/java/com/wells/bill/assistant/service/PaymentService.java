@@ -54,7 +54,7 @@ public class PaymentService {
         }
 
         // 🔐 Validate bill before creating intent
-        BillDetail bill = billService.getBill(req.getBillId());
+        BillDetail bill = billService.getBill(req.getBillId(), req.getUserId());
         if (bill.status() != BillStatus.VERIFIED) {
             throw new IllegalStateException("Bill not ready for payment");
         }
@@ -162,7 +162,7 @@ public class PaymentService {
             GatewayResponse resp = paymentExecutorService.executeSinglePayment(payment);
             if (resp != null && resp.success()) {
                 markSuccess(payment, resp.referenceId());
-                billService.markPaid(payment.getBillId(), payment.getId());
+                billService.markPaid(payment.getBillId(), payment.getId(), payment.getUserId());
             } else {
                 assert resp != null;
                 String reason = resp.referenceId();

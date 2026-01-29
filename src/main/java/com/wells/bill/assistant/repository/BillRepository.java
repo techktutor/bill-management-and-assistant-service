@@ -1,7 +1,7 @@
 package com.wells.bill.assistant.repository;
 
-import com.wells.bill.assistant.model.BillCategory;
 import com.wells.bill.assistant.entity.BillEntity;
+import com.wells.bill.assistant.model.BillCategory;
 import com.wells.bill.assistant.model.BillStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -30,6 +31,11 @@ public interface BillRepository extends JpaRepository<BillEntity, UUID> {
     List<BillEntity> findByDueDateBefore(LocalDate date);
 
     List<BillEntity> findByDueDateAfter(LocalDate date);
+
+    Optional<BillEntity> findByIdAndUserId(
+            UUID billId,
+            UUID userId
+    );
 
     Page<BillEntity> findByUserId(UUID userId, Pageable pageable);
 
@@ -58,11 +64,11 @@ public interface BillRepository extends JpaRepository<BillEntity, UUID> {
     List<BillEntity> findBillsDueSoon(UUID userId, LocalDate start, LocalDate end);
 
     @Query("""
-    SELECT b
-    FROM BillEntity b
-    WHERE b.userId = :userId
-      AND LOWER(b.providerName) LIKE LOWER(CONCAT('%', :providerName, '%'))
-""")
+                SELECT b
+                FROM BillEntity b
+                WHERE b.userId = :userId
+                  AND LOWER(b.providerName) LIKE LOWER(CONCAT('%', :providerName, '%'))
+            """)
     List<BillEntity> findBillsByUserAndProviderName(
             @Param("userId") UUID userId,
             @Param("providerName") String providerName

@@ -1,7 +1,10 @@
 package com.wells.bill.assistant.controller;
 
 import com.wells.bill.assistant.model.BillDetail;
+import com.wells.bill.assistant.model.Context;
 import com.wells.bill.assistant.service.BillService;
+import com.wells.bill.assistant.store.ContextStoreInMemory;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -12,6 +15,9 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+import static com.wells.bill.assistant.util.CookieGenerator.CONTEXT_COOKIE;
+import static com.wells.bill.assistant.util.CookieGenerator.getContextKey;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/bills")
@@ -19,14 +25,23 @@ import java.util.UUID;
 public class BillController {
 
     private final BillService billService;
+    private final ContextStoreInMemory contextStore;
 
     /* =====================================================
      * 1️⃣ Bill Detail
      * ===================================================== */
 
     @GetMapping("/{billId}")
-    public ResponseEntity<BillDetail> getBill(@PathVariable UUID billId) {
-        return ResponseEntity.ok(billService.getBill(billId));
+    public ResponseEntity<BillDetail> getBill(@PathVariable UUID billId,
+                                              @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+                                              HttpServletResponse response) {
+        // 1️⃣ Resolve key
+        contextKey = getContextKey(contextKey, response);
+
+        // 2️⃣ Load context (expires automatically after 10 min idle)
+        Context context = contextStore.getOrCreate(contextKey);
+
+        return ResponseEntity.ok(billService.getBill(billId, context.userId()));
     }
 
     /* =====================================================
@@ -35,11 +50,18 @@ public class BillController {
 
     @GetMapping
     public ResponseEntity<Page<BillDetail>> listBills(
-            @RequestParam UUID userId,
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+            HttpServletResponse response,
             Pageable pageable
     ) {
+        // 1️⃣ Resolve key
+        contextKey = getContextKey(contextKey, response);
+
+        // 2️⃣ Load context (expires automatically after 10 min idle)
+        Context context = contextStore.getOrCreate(contextKey);
+
         return ResponseEntity.ok(
-                billService.getBills(userId, pageable)
+                billService.getBills(context.userId(), pageable)
         );
     }
 
@@ -49,58 +71,75 @@ public class BillController {
 
     @GetMapping("/unpaid")
     public ResponseEntity<List<BillDetail>> getUnpaidBills(
-            @RequestParam UUID userId
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+            HttpServletResponse response
     ) {
+        // 1️⃣ Resolve key
+        contextKey = getContextKey(contextKey, response);
+
+        // 2️⃣ Load context (expires automatically after 10 min idle)
+        Context context = contextStore.getOrCreate(contextKey);
+
         return ResponseEntity.ok(
-                billService.getUnpaidBills(userId)
+                billService.getUnpaidBills(context.userId())
         );
     }
 
     /* =====================================================
-     * 4️⃣ Create Bill
-     * ===================================================== */
-
-    @PostMapping
-    public ResponseEntity<BillDetail> createBill(
-            @RequestBody BillDetail request
-    ) {
-        return ResponseEntity.ok(
-                billService.createBill(request)
-        );
-    }
-
-    /* =====================================================
-     * 5️⃣ Update Bill
+     * 4️⃣ Update Bill
      * ===================================================== */
 
     @PutMapping("/{billId}")
     public ResponseEntity<BillDetail> updateBill(
             @PathVariable UUID billId,
-            @RequestBody BillDetail request
+            @RequestBody BillDetail request,
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+            HttpServletResponse response
     ) {
+        // 1️⃣ Resolve key
+        contextKey = getContextKey(contextKey, response);
+
+        // 2️⃣ Load context (expires automatically after 10 min idle)
+        Context context = contextStore.getOrCreate(contextKey);
+
         return ResponseEntity.ok(
-                billService.updateBill(billId, request)
+                billService.updateBill(billId, context.userId(),request)
         );
     }
 
     /* =====================================================
-     * 6️⃣ Delete Bill
+     * 5️⃣ Delete Bill
      * ===================================================== */
 
     @DeleteMapping("/{billId}")
-    public ResponseEntity<Void> deleteBill(@PathVariable UUID billId) {
-        billService.deleteBill(billId);
+    public ResponseEntity<Void> deleteBill(@PathVariable UUID billId,
+                                           @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+                                           HttpServletResponse response) {
+        // 1️⃣ Resolve key
+        contextKey = getContextKey(contextKey, response);
+
+        // 2️⃣ Load context (expires automatically after 10 min idle)
+        Context context = contextStore.getOrCreate(contextKey);
+
+        billService.deleteBill(billId, context.userId());
         return ResponseEntity.noContent().build();
     }
 
     /* =====================================================
-     * 7️⃣ Scheduler / System
+     * 6️⃣ Scheduler / System
      * ===================================================== */
 
     @PostMapping("/overdue/run")
-    public ResponseEntity<String> runOverdueUpdate() {
+    public ResponseEntity<String> runOverdueUpdate(
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+            HttpServletResponse response) {
+        // 1️⃣ Resolve key
+        contextKey = getContextKey(contextKey, response);
+
+        // 2️⃣ Load context (expires automatically after 10 min idle)
+        Context context = contextStore.getOrCreate(contextKey);
+
         billService.updateOverdue();
         return ResponseEntity.ok("Overdue bills updated");
     }
 }
-

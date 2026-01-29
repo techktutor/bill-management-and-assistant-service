@@ -1,6 +1,5 @@
 package com.wells.bill.assistant.util;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -16,26 +15,31 @@ public final class CookieGenerator {
         if (contextKey == null) {
             contextKey = UUID.randomUUID().toString();
 
-            Cookie cookie = new Cookie(CONTEXT_COOKIE, contextKey);
+            /*Cookie cookie = new Cookie(CONTEXT_COOKIE, contextKey);
             cookie.setHttpOnly(true);
             cookie.setPath("/");
-            response.addCookie(cookie);
+            response.addCookie(cookie);*/
 
             // ✅ Production-Ready Cookie Code
-            //addContextCookie(response, contextKey);
+            addContextCookie(response, contextKey);
         }
         return contextKey;
     }
 
     // ✅ Production-Ready Cookie Code
-    private void addContextCookie(HttpServletResponse response, String contextKey) {
-        ResponseCookie cookie = ResponseCookie.from("CTX_ID", contextKey)
+    private static void addContextCookie(HttpServletResponse response, String contextKey) {
+
+        boolean isProd = false; // TODO: drive from env / profile
+
+        ResponseCookie cookie = ResponseCookie.from(CONTEXT_COOKIE, contextKey)
                 .httpOnly(true)
-                .secure(true) // MUST be true in production
-                .sameSite("None") // Required for cross-site
+                .secure(isProd) // true only in HTTPS
+                .sameSite(isProd ? "None" : "Lax")
                 .path("/")
                 .maxAge(Duration.ofDays(1))
                 .build();
+
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
+
 }

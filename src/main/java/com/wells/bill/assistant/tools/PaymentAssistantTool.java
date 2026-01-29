@@ -142,7 +142,7 @@ public class PaymentAssistantTool {
         // One-time use
         confirmationStore.delete(userId);
 
-        BillDetail bill = billService.getBill(stored.billId());
+        BillDetail bill = billService.getBill(stored.billId(), userId);
 
         String idempotencyKey = IdempotencyKeyGenerator.generate(
                 userId,
@@ -629,7 +629,7 @@ public class PaymentAssistantTool {
 
             if (payment.getBillId() == null) continue;
 
-            BillDetail bill = billService.getBill(payment.getBillId());
+            BillDetail bill = billService.getBill(payment.getBillId(), userId);
             String category = bill.billCategory().name();
 
             categoryTotals.merge(
