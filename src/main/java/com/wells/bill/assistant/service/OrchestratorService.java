@@ -38,9 +38,7 @@ public class OrchestratorService {
 
             String response = chatClient
                     .prompt()
-                    .system(system -> system
-                            .text(systemPrompt(userId))
-                    )
+                    .system(systemPrompt(userId))
                     .user(userMessage)
                     .tools(tools)
                     .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, conversationId))
