@@ -188,3 +188,14 @@ CREATE INDEX IF NOT EXISTS idx_customers_active
 CREATE INDEX IF NOT EXISTS idx_customers_metadata
     ON customers
     USING GIN (metadata);
+
+CREATE TABLE IF NOT EXISTS user_context (
+    context_key       VARCHAR(64) PRIMARY KEY,
+    user_id           UUID        NOT NULL,
+    conversation_id   UUID        NOT NULL,
+    last_access_time  BIGINT      NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_context_user
+    ON user_context (user_id);
+

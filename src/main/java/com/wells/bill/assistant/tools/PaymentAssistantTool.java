@@ -1,10 +1,12 @@
 package com.wells.bill.assistant.tools;
 
+import com.wells.bill.assistant.exception.InvalidUserInputException;
 import com.wells.bill.assistant.model.*;
 import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.PaymentService;
-import com.wells.bill.assistant.store.ContextStoreInMemory;
+import com.wells.bill.assistant.store.ContextStore;
 import com.wells.bill.assistant.store.PaymentConfirmationStoreInMemory;
+import com.wells.bill.assistant.util.ConversationContextHolder;
 import com.wells.bill.assistant.util.IdempotencyKeyGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +28,7 @@ public class PaymentAssistantTool {
 
     private final BillService billService;
     private final PaymentService paymentService;
-    private final ContextStoreInMemory contextStore;
+    private final ContextStore contextStore;
     private final PaymentConfirmationStoreInMemory confirmationStore;
 
     /* =====================================================
@@ -45,8 +47,10 @@ public class PaymentAssistantTool {
             @ToolParam(description = "Bill Provider Name") String billName,
             @ToolParam(description = "Schedule payment after N days (0 = immediate)") int scheduledAfterDays
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
 
         log.info("PaymentAssistantTool: Creating payment request for userId={}, billName={}, scheduledAfterDays={}",
                 userId, billName, scheduledAfterDays
@@ -54,7 +58,15 @@ public class PaymentAssistantTool {
         BillDetail bill = getDetails(userId, billName);
 
         if (bill.status() != BillStatus.VERIFIED) {
-            throw new IllegalArgumentException("Bill is not ready for payment.");
+            return new PaymentConfirmation(
+                    bill.id(),
+                    userId,
+                    bill.amountDue().amount(),
+                    bill.amountDue().currency().getSymbol(),
+                    null,
+                    null,
+                    "This bill is not verified yet, so payment cannot be processed."
+            );
         }
 
         LocalDate scheduledDate =
@@ -84,7 +96,7 @@ public class PaymentAssistantTool {
                 bill.amountDue().amount(),
                 bill.amountDue().currency().getSymbol(),
                 scheduledDate,
-                token,
+                null,
                 scheduledDate == null
                         ? "Please confirm payment of %s %s to %s within 5 minutes."
                         .formatted(
@@ -117,8 +129,10 @@ public class PaymentAssistantTool {
     public String confirmAndPayBill(
             @ToolParam(description = "Confirmation token") String confirmationToken
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
 
         log.info("Confirming payment for userId={}, confirmationToken={}",
                 userId, confirmationToken
@@ -132,11 +146,8 @@ public class PaymentAssistantTool {
                                 )
                         );
 
-        if (!stored.token().equals(confirmationToken) ||
-                !stored.userId().equals(userId)) {
-            throw new IllegalArgumentException(
-                    "Confirmation token does not match bill or user."
-            );
+        if (!stored.token().equals(confirmationToken) || !stored.userId().equals(userId)) {
+            return "Confirmation token does not match bill or user";
         }
 
         // One-time use
@@ -282,8 +293,10 @@ public class PaymentAssistantTool {
                     """
     )
     public List<PaymentResponse> listPaymentsForUser() {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
 
         return paymentService.getPaymentsForUser(userId);
     }
@@ -335,8 +348,10 @@ public class PaymentAssistantTool {
     public PaymentAnomalyReport paymentAnomalyDetection(
             @ToolParam(description = "Payment identifier") UUID paymentId
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
 
         PaymentResponse current = paymentService.getPaymentById(paymentId);
         List<PaymentResponse> allPayments = paymentService.getPaymentsForUser(userId);
@@ -410,8 +425,10 @@ public class PaymentAssistantTool {
     public MonthlyPaymentSummary monthlyPaymentSummary(
             @ToolParam(description = "Month in YYYY-MM format") String month
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
 
         YearMonth yearMonth = YearMonth.parse(month);
 
@@ -525,8 +542,10 @@ public class PaymentAssistantTool {
         YearMonth current = YearMonth.parse(month);
         YearMonth previous = current.minusMonths(1);
 
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
 
         List<PaymentResponse> payments =
                 paymentService.getPaymentsForUser(userId);
@@ -608,8 +627,10 @@ public class PaymentAssistantTool {
     public CategorySpendSummary categoryWiseSpendSummary(
             @ToolParam(description = "Month in YYYY-MM format") String month
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
 
         YearMonth yearMonth = YearMonth.parse(month);
         Map<String, BigDecimal> categoryTotals = new HashMap<>();

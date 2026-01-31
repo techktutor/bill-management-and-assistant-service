@@ -3,7 +3,7 @@ package com.wells.bill.assistant.controller;
 import com.wells.bill.assistant.exception.InvalidUserInputException;
 import com.wells.bill.assistant.model.*;
 import com.wells.bill.assistant.service.PaymentService;
-import com.wells.bill.assistant.store.ContextStoreInMemory;
+import com.wells.bill.assistant.store.ContextStore;
 import com.wells.bill.assistant.util.IdempotencyKeyGenerator;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,8 +16,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-import static com.wells.bill.assistant.util.CookieGenerator.CONTEXT_COOKIE;
-import static com.wells.bill.assistant.util.CookieGenerator.getContextKey;
+import static com.wells.bill.assistant.util.CookieGenerator.*;
 
 @Slf4j
 @RestController
@@ -26,7 +25,7 @@ import static com.wells.bill.assistant.util.CookieGenerator.getContextKey;
 public class PaymentController {
 
     private final PaymentService paymentService;
-    private final ContextStoreInMemory contextStore;
+    private final ContextStore contextStore;
 
     // -----------------------------
     // Create Payment Intent
@@ -35,13 +34,14 @@ public class PaymentController {
     public ResponseEntity<PaymentIntentResponse> createIntent(
             @Valid @RequestBody PaymentIntentRequest req,
             @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+            @CookieValue(value = USER_COOKIE, required = false) String userCookie,
             HttpServletResponse response) {
 
-        // 1️⃣ Resolve key
-        contextKey = getContextKey(contextKey, response);
+        String userIdStr = getOrCreateUserId(userCookie, response);
+        UUID userId = UUID.fromString(userIdStr);
 
-        // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.getOrCreate(contextKey);
+        contextKey = getContextKey(contextKey, response);
+        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
 
         req.setUserId(context.userId());
         String idempotencyKey = IdempotencyKeyGenerator.generate(
@@ -63,13 +63,14 @@ public class PaymentController {
             @PathVariable UUID paymentId,
             @RequestBody ExecutePaymentRequest req,
             @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+            @CookieValue(value = USER_COOKIE, required = false) String userCookie,
             HttpServletResponse response) {
 
-        // 1️⃣ Resolve key
-        contextKey = getContextKey(contextKey, response);
+        String userIdStr = getOrCreateUserId(userCookie, response);
+        UUID userId = UUID.fromString(userIdStr);
 
-        // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.getOrCreate(contextKey);
+        contextKey = getContextKey(contextKey, response);
+        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
 
         req.setUserId(context.userId());
         req.setPaymentId(paymentId);
@@ -84,13 +85,14 @@ public class PaymentController {
     public ResponseEntity<PaymentIntentResponse> schedulePayment(
             @RequestBody PaymentIntentRequest req,
             @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+            @CookieValue(value = USER_COOKIE, required = false) String userCookie,
             HttpServletResponse response) {
 
-        // 1️⃣ Resolve key
-        contextKey = getContextKey(contextKey, response);
+        String userIdStr = getOrCreateUserId(userCookie, response);
+        UUID userId = UUID.fromString(userIdStr);
 
-        // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.getOrCreate(contextKey);
+        contextKey = getContextKey(contextKey, response);
+        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
 
         req.setUserId(context.userId());
         if (req.getScheduledDate() == null) {
@@ -156,13 +158,14 @@ public class PaymentController {
     @GetMapping
     public ResponseEntity<List<PaymentResponse>> listPayments(
             @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+            @CookieValue(value = USER_COOKIE, required = false) String userCookie,
             HttpServletResponse response) {
 
-        // 1️⃣ Resolve key
-        contextKey = getContextKey(contextKey, response);
+        String userIdStr = getOrCreateUserId(userCookie, response);
+        UUID userId = UUID.fromString(userIdStr);
 
-        // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.getOrCreate(contextKey);
+        contextKey = getContextKey(contextKey, response);
+        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
 
         List<PaymentResponse> payments = paymentService.getPaymentsForUser(context.userId());
         if (payments != null) {
@@ -178,13 +181,14 @@ public class PaymentController {
     @PostMapping("/scheduler/run")
     public ResponseEntity<String> runSchedulerNow(@RequestBody ExecutePaymentRequest paymentRequest,
                                                   @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+                                                  @CookieValue(value = USER_COOKIE, required = false) String userCookie,
                                                   HttpServletResponse response) {
 
-        // 1️⃣ Resolve key
-        contextKey = getContextKey(contextKey, response);
+        String userIdStr = getOrCreateUserId(userCookie, response);
+        UUID userId = UUID.fromString(userIdStr);
 
-        // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.getOrCreate(contextKey);
+        contextKey = getContextKey(contextKey, response);
+        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
 
         paymentRequest.setUserId(context.userId());
         paymentRequest.setExecutedBy(ExecutedBy.USER);

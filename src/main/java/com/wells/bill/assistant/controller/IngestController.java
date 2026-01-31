@@ -8,7 +8,7 @@ import com.wells.bill.assistant.model.DataQualityDecision;
 import com.wells.bill.assistant.service.BillParser;
 import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.IngestionService;
-import com.wells.bill.assistant.store.ContextStoreInMemory;
+import com.wells.bill.assistant.store.ContextStore;
 import com.wells.bill.assistant.util.TextExtractor;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 
-import static com.wells.bill.assistant.util.CookieGenerator.CONTEXT_COOKIE;
-import static com.wells.bill.assistant.util.CookieGenerator.getContextKey;
+import static com.wells.bill.assistant.util.CookieGenerator.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -35,18 +34,19 @@ public class IngestController {
     private final BillParser billParser;
     private final BillService billService;
     private final IngestionService etlService;
-    private final ContextStoreInMemory contextStore;
+    private final ContextStore contextStore;
 
     @PostMapping(value = "/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> ingest(@RequestPart("files") List<MultipartFile> files,
                                     @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+                                    @CookieValue(value = USER_COOKIE, required = false) String userCookie,
                                     HttpServletResponse response) {
 
-        // 1️⃣ Resolve key
-        contextKey = getContextKey(contextKey, response);
+        String userIdStr = getOrCreateUserId(userCookie, response);
+        UUID userId = UUID.fromString(userIdStr);
 
-        // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.getOrCreate(contextKey);
+        contextKey = getContextKey(contextKey, response);
+        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
 
         if (files == null || files.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -99,8 +99,6 @@ public class IngestController {
 
         int confidenceScore = parseResult.overallConfidence();
         DataQualityDecision decision = DataQualityDecision.fromScore(confidenceScore);
-        log.info("{} confidence ({}) in extracted bill details: {}",
-                decision, confidenceScore, resultBill.id());
 
         resultBill = BillDetail.builder()
                 .amountDue(resultBill.amountDue())
@@ -117,6 +115,9 @@ public class IngestController {
 
         BillDetail savedBill = billService.createBill(resultBill);
         etlService.ingestFile(savedBill.id(), documents);
+
+        log.info("{} confidence ({}) in extracted bill details: {}",
+                decision, confidenceScore, savedBill.id());
 
         return savedBill;
     }

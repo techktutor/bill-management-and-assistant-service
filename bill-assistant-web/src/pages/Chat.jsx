@@ -26,7 +26,7 @@ export default function Chat() {
       setMessages([
         {
           from: "bot",
-          text: "Hi! 🤖 I’m your Bill Assistant. I can help you pay bills, check payments, or answer questions.",
+          text: "Hi! I’m your Bill Assistant. I can help you pay bills, check payments, or answer questions.",
         },
       ]);
     }

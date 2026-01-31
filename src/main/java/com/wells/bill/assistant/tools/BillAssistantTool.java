@@ -1,8 +1,13 @@
 package com.wells.bill.assistant.tools;
 
-import com.wells.bill.assistant.model.*;
+import com.wells.bill.assistant.exception.InvalidUserInputException;
+import com.wells.bill.assistant.model.BillAnomalyReport;
+import com.wells.bill.assistant.model.BillDetail;
+import com.wells.bill.assistant.model.BillExplanation;
+import com.wells.bill.assistant.model.BillStatus;
 import com.wells.bill.assistant.service.BillService;
-import com.wells.bill.assistant.store.ContextStoreInMemory;
+import com.wells.bill.assistant.store.ContextStore;
+import com.wells.bill.assistant.util.ConversationContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
@@ -24,7 +29,7 @@ import java.util.stream.Collectors;
 public class BillAssistantTool {
 
     private final BillService billService;
-    private final ContextStoreInMemory contextStore;
+    private final ContextStore contextStore;
 
     /* =====================================================
      * 1️⃣ READ-ONLY BILL QUERIES (SAFE FOR AI)
@@ -37,8 +42,10 @@ public class BillAssistantTool {
     public BillDetail getBillDetails(
             @ToolParam(description = "Bill Provider Name") String billName
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
 
         log.info("BillAssistantTool: Fetching bill details for billName={}", billName);
 
@@ -50,9 +57,13 @@ public class BillAssistantTool {
             description = "List all bills for a given user. Use pagination at the UI layer if needed."
     )
     public List<BillDetail> listAllBills() {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
-        UUID conversationId = context.conversationId();
+
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        UUID conversationId = ConversationContextHolder.getConversationId();
 
         log.info("BillAssistantTool: listAllBills for userId={} and conversationId={}", userId, conversationId);
 
@@ -67,9 +78,12 @@ public class BillAssistantTool {
                     """
     )
     public List<BillDetail> listUnpaidBills() {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
-        UUID conversationId = context.conversationId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        UUID conversationId = ConversationContextHolder.getConversationId();
 
         log.info("BillAssistantTool: listUnpaidBills for userId={} and conversationId={}", userId, conversationId);
 
@@ -84,9 +98,12 @@ public class BillAssistantTool {
                     """
     )
     public List<BillDetail> listBillsDueSoon() {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
-        UUID conversationId = context.conversationId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        UUID conversationId = ConversationContextHolder.getConversationId();
 
         log.info("BillAssistantTool: listBillsDueSoon for userId={} and conversationId={}", userId, conversationId);
 
@@ -111,9 +128,14 @@ public class BillAssistantTool {
     public List<BillDetail> listBillsDueAfter(
             @ToolParam(description = "Number of days from today") int days
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
-        log.info("BillAssistantTool: listBillsDueAfter for userId={}", userId);
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        UUID conversationId = ConversationContextHolder.getConversationId();
+
+        log.info("BillAssistantTool: listBillsDueAfter for userId={}, conversationId={}", userId, conversationId);
 
         LocalDate endDate = LocalDate.now().plusDays(days);
 
@@ -134,10 +156,14 @@ public class BillAssistantTool {
                     """
     )
     public Map<String, List<BillDetail>> groupUnpaidBillsByProvider() {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
 
-        log.info("BillAssistantTool: groupUnpaidBillsByProvider for userId={}", userId);
+        UUID conversationId = ConversationContextHolder.getConversationId();
+
+        log.info("BillAssistantTool: groupUnpaidBillsByProvider for userId={}, conversationId={}", userId, conversationId);
 
         return billService.getUnpaidBills(userId)
                 .stream()
@@ -160,13 +186,15 @@ public class BillAssistantTool {
                     Use only after bill data has been reviewed.
                     """
     )
-    public BillDetail markBillAsVerified(
-            @ToolParam(description = "Bill provider name") String providerName
-    ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+    public BillDetail markBillAsVerified(@ToolParam(description = "Bill provider name") String providerName) {
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
 
-        log.info("BillAssistantTool: verifying providerName={}", providerName);
+        UUID conversationId = ConversationContextHolder.getConversationId();
+
+        log.info("BillAssistantTool: markBillAsVerified for providerName={}, userId={}, conversationId={}", providerName, userId, conversationId);
 
         return billService.markVerified(getDetails(userId, providerName).id(), userId);
     }
@@ -182,13 +210,15 @@ public class BillAssistantTool {
                     - Is it overdue?
                     """
     )
-    public BillExplanation explainBill(
-            @ToolParam(description = "Bill provider name") String providerName
-    ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+    public BillExplanation explainBill(@ToolParam(description = "Bill provider name") String providerName) {
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
 
-        log.info("BillAssistantTool: explaining bill providerName={}", providerName);
+        UUID conversationId = ConversationContextHolder.getConversationId();
+
+        log.info("BillAssistantTool: explaining bill for providerName={}, userId={}, conversationId={}", providerName, userId, conversationId);
 
         BillDetail bill = getDetails(userId, providerName);
 
@@ -245,8 +275,14 @@ public class BillAssistantTool {
     public String explainWhyBillIsHigh(
             @ToolParam(description = "Bill provider name") String providerName
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        UUID conversationId = ConversationContextHolder.getConversationId();
+
+        log.info("BillAssistantTool: explaining why bill is high for providerName={}, userId={}, conversationId={}", providerName, userId, conversationId);
 
         BillDetail bill = getDetails(userId, providerName);
 
@@ -282,8 +318,14 @@ public class BillAssistantTool {
     public String suggestPaymentPriority(
             @ToolParam(description = "Bill provider name") String providerName
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        UUID conversationId = ConversationContextHolder.getConversationId();
+
+        log.info("BillAssistantTool: suggesting payment priority for providerName={}, userId={}, conversationId={}", providerName, userId, conversationId);
 
         BillDetail bill = getDetails(userId, providerName);
 
@@ -312,8 +354,14 @@ public class BillAssistantTool {
     public String generatePaymentReminderMessage(
             @ToolParam(description = "Bill provider name") String providerName
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        UUID conversationId = ConversationContextHolder.getConversationId();
+
+        log.info("BillAssistantTool: generating payment reminder for providerName={}, userId={}, conversationId={}", providerName, userId, conversationId);
 
         BillDetail bill = getDetails(userId, providerName);
 
@@ -342,8 +390,14 @@ public class BillAssistantTool {
     public List<String> explainBillAsBulletPoints(
             @ToolParam(description = "Bill provider name") String providerName
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        UUID conversationId = ConversationContextHolder.getConversationId();
+
+        log.info("BillAssistantTool: explaining bill as bullet points for providerName={}, userId={}, conversationId={}", providerName, userId, conversationId);
 
         BillDetail bill = getDetails(userId, providerName);
 
@@ -369,8 +423,13 @@ public class BillAssistantTool {
             @ToolParam(description = "Bill provider name") String providerName,
             @ToolParam(description = "Language code (en, hi)") String language
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        UUID conversationId = ConversationContextHolder.getConversationId();
+        log.info("BillAssistantTool: explaining bill in language={} for providerName={}, userId={}, conversationId={}", language, providerName, userId, conversationId);
 
         BillDetail bill = getDetails(userId, providerName);
 
@@ -416,8 +475,14 @@ public class BillAssistantTool {
                     """
     )
     public String forecastMonthlySpend() {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        UUID conversationId = ConversationContextHolder.getConversationId();
+
+        log.info("BillAssistantTool: forecasting monthly spend for userId={}, conversationId={}", userId, conversationId);
 
         List<BillDetail> unpaid = billService.getUnpaidBills(userId);
 
@@ -451,8 +516,14 @@ public class BillAssistantTool {
     public BillAnomalyReport detectBillAnomaly(
             @ToolParam(description = "Bill provider name") String providerName
     ) {
-        Context context = contextStore.getExistingContext();
-        UUID userId = context.userId();
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        UUID conversationId = ConversationContextHolder.getConversationId();
+
+        log.info("BillAssistantTool: detecting anomaly for providerName={}, userId={}, conversationId={}", providerName, userId, conversationId);
 
         BillDetail current = getDetails(userId, providerName);
         List<BillDetail> unpaid = billService.getUnpaidBills(userId);

@@ -6,7 +6,7 @@ package com.wells.bill.assistant.controller;
 import com.wells.bill.assistant.model.ChatRequest;
 import com.wells.bill.assistant.model.Context;
 import com.wells.bill.assistant.service.OrchestratorService;
-import com.wells.bill.assistant.store.ContextStoreInMemory;
+import com.wells.bill.assistant.store.ContextStore;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -15,9 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
 
-import static com.wells.bill.assistant.util.CookieGenerator.CONTEXT_COOKIE;
-import static com.wells.bill.assistant.util.CookieGenerator.getContextKey;
+import static com.wells.bill.assistant.util.CookieGenerator.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,18 +27,19 @@ public class ChatController {
     private static final Logger log = LoggerFactory.getLogger(ChatController.class);
 
     private final OrchestratorService orchestrator;
-    private final ContextStoreInMemory contextStore;
+    private final ContextStore contextStore;
 
     @PostMapping
     public ResponseEntity<String> chat(@RequestBody String userMessage,
                                        @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
+                                       @CookieValue(value = USER_COOKIE, required = false) String userCookie,
                                        HttpServletResponse response) {
 
-        // 1️⃣ Resolve key
-        contextKey = getContextKey(contextKey, response);
+        String userIdStr = getOrCreateUserId(userCookie, response);
+        UUID userId = UUID.fromString(userIdStr);
 
-        // 2️⃣ Load context (expires automatically after 10 min idle)
-        Context context = contextStore.getOrCreate(contextKey);
+        contextKey = getContextKey(contextKey, response);
+        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
 
         log.info("Received chat request from User= {}, conversationId= {}", context.userId(), context.conversationId());
 
