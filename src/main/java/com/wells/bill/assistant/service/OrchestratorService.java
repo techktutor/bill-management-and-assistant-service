@@ -32,7 +32,8 @@ public class OrchestratorService {
 
             ConversationContextHolder.set(
                     request.getUserId(),
-                    request.getConversationId());
+                    request.getConversationId()
+            );
 
             Object[] tools = new Object[]{billAssistantTool, paymentAssistantTool};
 

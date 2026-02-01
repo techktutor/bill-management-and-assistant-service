@@ -39,9 +39,7 @@ public class BillAssistantTool {
             name = "getBillDetails",
             description = "Get complete details of a specific bill using its billId."
     )
-    public BillDetail getBillDetails(
-            @ToolParam(description = "Bill Provider Name") String billName
-    ) {
+    public BillDetail getBillDetails(@ToolParam(description = "Bill Provider Name") String billName) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
@@ -57,7 +55,6 @@ public class BillAssistantTool {
             description = "List all bills for a given user. Use pagination at the UI layer if needed."
     )
     public List<BillDetail> listAllBills() {
-
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
@@ -125,9 +122,7 @@ public class BillAssistantTool {
                     Useful for reminders and alerts.
                     """
     )
-    public List<BillDetail> listBillsDueAfter(
-            @ToolParam(description = "Number of days from today") int days
-    ) {
+    public List<BillDetail> listBillsDueAfter(@ToolParam(description = "Number of days from today") int days) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
@@ -142,8 +137,7 @@ public class BillAssistantTool {
         return billService.getUnpaidBills(userId)
                 .stream()
                 .filter(b ->
-                        b.dueDate() != null &&
-                                !b.dueDate().isAfter(endDate)
+                        b.dueDate() != null && b.dueDate().isAfter(endDate)
                 )
                 .toList();
     }
@@ -194,7 +188,7 @@ public class BillAssistantTool {
 
         UUID conversationId = ConversationContextHolder.getConversationId();
 
-        log.info("BillAssistantTool: markBillAsVerified for providerName={}, userId={}, conversationId={}", providerName, userId, conversationId);
+        log.info("BillAssistantTool: Marking BillAsVerified for providerName={}, userId={}, conversationId={}", providerName, userId, conversationId);
 
         return billService.markVerified(getDetails(userId, providerName).id(), userId);
     }
@@ -272,9 +266,7 @@ public class BillAssistantTool {
                     This is a heuristic explanation and does not modify any data.
                     """
     )
-    public String explainWhyBillIsHigh(
-            @ToolParam(description = "Bill provider name") String providerName
-    ) {
+    public String explainWhyBillIsHigh(@ToolParam(description = "Bill provider name") String providerName) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
@@ -286,6 +278,12 @@ public class BillAssistantTool {
 
         BillDetail bill = getDetails(userId, providerName);
 
+        StringBuilder explanation = getStringBuilder(bill);
+
+        return explanation.toString().strip();
+    }
+
+    private static StringBuilder getStringBuilder(BillDetail bill) {
         StringBuilder explanation = new StringBuilder(
                 "Here are possible reasons this bill might be higher than expected:\n"
         );
@@ -304,8 +302,7 @@ public class BillAssistantTool {
                 - Tariff or rate changes by the provider
                 - Late fees or adjustments from previous cycles
                 """);
-
-        return explanation.toString().strip();
+        return explanation;
     }
 
     @Tool(
@@ -315,9 +312,7 @@ public class BillAssistantTool {
                     Returns HIGH, MEDIUM, or LOW priority.
                     """
     )
-    public String suggestPaymentPriority(
-            @ToolParam(description = "Bill provider name") String providerName
-    ) {
+    public String suggestPaymentPriority(@ToolParam(description = "Bill provider name") String providerName) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
@@ -351,9 +346,7 @@ public class BillAssistantTool {
                     Suitable for notifications, email, or WhatsApp.
                     """
     )
-    public String generatePaymentReminderMessage(
-            @ToolParam(description = "Bill provider name") String providerName
-    ) {
+    public String generatePaymentReminderMessage(@ToolParam(description = "Bill provider name") String providerName) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
@@ -387,9 +380,7 @@ public class BillAssistantTool {
                     Read-only helper for UI or conversational display.
                     """
     )
-    public List<String> explainBillAsBulletPoints(
-            @ToolParam(description = "Bill provider name") String providerName
-    ) {
+    public List<String> explainBillAsBulletPoints(@ToolParam(description = "Bill provider name") String providerName) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
@@ -513,9 +504,7 @@ public class BillAssistantTool {
                     Read-only AI helper tool.
                     """
     )
-    public BillAnomalyReport detectBillAnomaly(
-            @ToolParam(description = "Bill provider name") String providerName
-    ) {
+    public BillAnomalyReport detectBillAnomaly(@ToolParam(description = "Bill provider name") String providerName) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");

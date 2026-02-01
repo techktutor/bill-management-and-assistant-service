@@ -126,9 +126,7 @@ public class PaymentAssistantTool {
                     This tool creates a payment intent and marks the bill as PAID.
                     """
     )
-    public String confirmAndPayBill(
-            @ToolParam(description = "Confirmation token") String confirmationToken
-    ) {
+    public String confirmAndPayBill(@ToolParam(description = "Confirmation token") String confirmationToken) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
@@ -138,12 +136,9 @@ public class PaymentAssistantTool {
                 userId, confirmationToken
         );
 
-        PaymentConfirmationToken stored =
-                confirmationStore.find(userId)
+        PaymentConfirmationToken stored = confirmationStore.find(userId)
                         .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Confirmation token expired or invalid."
-                                )
+                                new IllegalArgumentException("Confirmation token expired or invalid.")
                         );
 
         if (!stored.token().equals(confirmationToken) || !stored.userId().equals(userId)) {
@@ -179,8 +174,7 @@ public class PaymentAssistantTool {
 
         var intent = paymentService.createPaymentIntent(req);
 
-        log.info(
-                "Payment executed via AI tool: billId={}, paymentId={}, scheduledDate={}",
+        log.info("Payment executed via AI tool: billId={}, paymentId={}, scheduledDate={}",
                 intent.getBillId(), intent.getPaymentId(), intent.getScheduledDate()
         );
 
@@ -196,9 +190,7 @@ public class PaymentAssistantTool {
                     This is a read-only helper tool and does not modify any data.
                     """
     )
-    public PaymentResponse getPaymentDetails(
-            @ToolParam(description = "Payment identifier") UUID paymentId
-    ) {
+    public PaymentResponse getPaymentDetails(@ToolParam(description = "Payment identifier") UUID paymentId) {
         return paymentService.getPaymentById(paymentId);
     }
 
@@ -209,9 +201,7 @@ public class PaymentAssistantTool {
                     Useful for answering user questions about payment progress or failure.
                     """
     )
-    public String explainPaymentStatus(
-            @ToolParam(description = "Payment identifier") UUID paymentId
-    ) {
+    public String explainPaymentStatus(@ToolParam(description = "Payment identifier") UUID paymentId) {
         PaymentResponse payment = paymentService.getPaymentById(paymentId);
 
         return switch (payment.getStatus()) {
@@ -308,9 +298,7 @@ public class PaymentAssistantTool {
                     Read-only helper tool.
                     """
     )
-    public String explainScheduledPayment(
-            @ToolParam(description = "Payment identifier") UUID paymentId
-    ) {
+    public String explainScheduledPayment(@ToolParam(description = "Payment identifier") UUID paymentId) {
         PaymentResponse payment = paymentService.getPaymentById(paymentId);
 
         if (payment.getScheduledDate() == null) {
@@ -345,9 +333,7 @@ public class PaymentAssistantTool {
                     Read-only AI helper tool.
                     """
     )
-    public PaymentAnomalyReport paymentAnomalyDetection(
-            @ToolParam(description = "Payment identifier") UUID paymentId
-    ) {
+    public PaymentAnomalyReport paymentAnomalyDetection(@ToolParam(description = "Payment identifier") UUID paymentId) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
@@ -422,9 +408,7 @@ public class PaymentAssistantTool {
                     Read-only AI helper tool.
                     """
     )
-    public MonthlyPaymentSummary monthlyPaymentSummary(
-            @ToolParam(description = "Month in YYYY-MM format") String month
-    ) {
+    public MonthlyPaymentSummary monthlyPaymentSummary(@ToolParam(description = "Month in YYYY-MM format") String month) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
@@ -505,11 +489,8 @@ public class PaymentAssistantTool {
                     Helpful for conversational responses.
                     """
     )
-    public String explainMonthlyPaymentSummary(
-            @ToolParam(description = "Month in YYYY-MM format") String month
-    ) {
+    public String explainMonthlyPaymentSummary(@ToolParam(description = "Month in YYYY-MM format") String month) {
         MonthlyPaymentSummary summary = monthlyPaymentSummary(month);
-
         return """
                 📊 Your payment summary for %s:
                 
@@ -536,9 +517,7 @@ public class PaymentAssistantTool {
                     Read-only AI helper tool.
                     """
     )
-    public SpendingTrendReport detectSpendingTrend(
-            @ToolParam(description = "Month in YYYY-MM format") String month
-    ) {
+    public SpendingTrendReport detectSpendingTrend(@ToolParam(description = "Month in YYYY-MM format") String month) {
         YearMonth current = YearMonth.parse(month);
         YearMonth previous = current.minusMonths(1);
 
@@ -624,9 +603,7 @@ public class PaymentAssistantTool {
                     Read-only AI helper tool.
                     """
     )
-    public CategorySpendSummary categoryWiseSpendSummary(
-            @ToolParam(description = "Month in YYYY-MM format") String month
-    ) {
+    public CategorySpendSummary categoryWiseSpendSummary(@ToolParam(description = "Month in YYYY-MM format") String month) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
