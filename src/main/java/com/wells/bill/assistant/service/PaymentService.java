@@ -75,7 +75,7 @@ public class PaymentService {
         payment.setUserId(req.getUserId());
         payment.setBillId(req.getBillId());
         payment.setAmount(req.getAmount());
-        payment.setCurrency(req.getCurrency() == null ? bill.amountDue().currency().getSymbol() : req.getCurrency());
+        payment.setCurrency(req.getCurrency() == null ? bill.amountDue().currency().getCurrencyCode() : req.getCurrency());
         payment.setIdempotencyKey(req.getIdempotencyKey());
 
         if (req.getExecutedBy() == null) {
@@ -98,6 +98,7 @@ public class PaymentService {
      * Step 2: Request approval (manual / auto)
      */
     public void requestApproval(UUID paymentId, ExecutedBy executedBy) {
+        log.info("Requesting approval for paymentId= {}", paymentId);
         if (executedBy == null) {
             throw new IllegalArgumentException("ExecutedBy is required to execute payment");
         }
@@ -109,6 +110,7 @@ public class PaymentService {
      * Step 3: Approve payment
      */
     public void approvePayment(UUID paymentId, ExecutedBy executedBy) {
+        log.info("Approving paymentId= {}", paymentId);
         if (executedBy == null) {
             throw new IllegalArgumentException("ExecutedBy is required to execute payment");
         }
@@ -124,6 +126,7 @@ public class PaymentService {
      * Cancel payment
      */
     public boolean cancelPayment(UUID paymentId, ExecutedBy executedBy) {
+        log.info("Cancelling paymentId= {}", paymentId);
         if (executedBy == null) {
             throw new IllegalArgumentException("ExecutedBy is required to execute payment");
         }
@@ -163,6 +166,7 @@ public class PaymentService {
             if (resp != null && resp.success()) {
                 markSuccess(payment, resp.referenceId());
                 billService.markPaid(payment.getBillId(), payment.getId(), payment.getUserId());
+                log.info("Payment executed successfully paymentId= {}", payment.getId());
             } else {
                 assert resp != null;
                 String reason = resp.referenceId();
@@ -170,6 +174,7 @@ public class PaymentService {
                     reason = "Unknown failure";
                 }
                 markFailure(payment, reason);
+                log.info("Payment execution failed paymentId= {}, reason= {}", payment.getId(), reason);
             }
         } catch (Exception ex) {
             log.error("Error executing payment paymentId= {}", payment.getId(), ex);
@@ -181,6 +186,7 @@ public class PaymentService {
     }
 
     public void executeScheduledPayments(LocalDate asOfDate, ExecutePaymentRequest executePaymentRequest) {
+        log.info("Executing scheduled payments due as of date: {}", asOfDate);
         List<PaymentEntity> scheduledPayments = findDueScheduledPayments(asOfDate);
         for (PaymentEntity payment : scheduledPayments) {
             executeSinglePayment(payment, executePaymentRequest);
@@ -188,6 +194,7 @@ public class PaymentService {
     }
 
     public List<PaymentEntity> findDueScheduledPayments(LocalDate asOfDate) {
+        log.info("Finding scheduled payments due as of date: {}", asOfDate);
         return paymentRepository.findByPaymentTypeAndStatusAndScheduledDateLessThanEqual(
                 PaymentType.SCHEDULED,
                 PaymentStatus.SCHEDULED,
@@ -199,6 +206,7 @@ public class PaymentService {
     // Helpers
     // ------------------------
     private PaymentEntity getPayment(UUID id) {
+        log.info("Fetching payment by id= {}", id);
         return paymentRepository.findById(id)
                 .orElseThrow(() ->
                         new EntityNotFoundException("Payment not found: " + id)
@@ -207,6 +215,7 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public List<PaymentResponse> getPaymentsForUser(UUID userId) {
+        log.info("Fetching payments for userId= {}", userId);
         return paymentRepository.findByUserId(userId)
                 .stream()
                 .map(this::toPaymentResponse)

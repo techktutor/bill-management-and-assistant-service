@@ -31,16 +31,18 @@ public class BillController {
      * ===================================================== */
 
     @GetMapping("/{billId}")
-    public ResponseEntity<BillDetail> getBill(@PathVariable UUID billId,
-                                              @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
-                                              @CookieValue(value = USER_COOKIE, required = false) String userCookie,
-                                              HttpServletResponse response) {
+    public ResponseEntity<BillDetail> getBill(
+            @PathVariable UUID billId,
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String rawContextId,
+            @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
+            HttpServletResponse response
+    ) {
+        UUID userId = getOrCreateUserId(rawUserId, response);
+        UUID contextId = getOrCreateContextId(rawContextId, response);
 
-        String userIdStr = getOrCreateUserId(userCookie, response);
-        UUID userId = UUID.fromString(userIdStr);
+        Context context = contextStore.resolveContext(contextId, userId);
 
-        contextKey = getContextKey(contextKey, response);
-        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
+        response.setHeader("Cache-Control", "no-store");
 
         return ResponseEntity.ok(billService.getBill(billId, context.userId()));
     }
@@ -51,16 +53,19 @@ public class BillController {
 
     @GetMapping
     public ResponseEntity<Page<BillDetail>> listBills(
-            @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
-            @CookieValue(value = USER_COOKIE, required = false) String userCookie,
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String rawContextId,
+            @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response,
             Pageable pageable
     ) {
-        String userIdStr = getOrCreateUserId(userCookie, response);
-        UUID userId = UUID.fromString(userIdStr);
+        UUID userId = getOrCreateUserId(rawUserId, response);
+        UUID contextId = getOrCreateContextId(rawContextId, response);
 
-        contextKey = getContextKey(contextKey, response);
-        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
+        Context context = contextStore.resolveContext(contextId, userId);
+
+        response.setHeader("Cache-Control", "no-store");
+
+        log.info("Listing bills for user: {}", userId);
 
         return ResponseEntity.ok(
                 billService.getBills(context.userId(), pageable)
@@ -73,15 +78,16 @@ public class BillController {
 
     @GetMapping("/unpaid")
     public ResponseEntity<List<BillDetail>> getUnpaidBills(
-            @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
-            @CookieValue(value = USER_COOKIE, required = false) String userCookie,
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String rawContextId,
+            @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        String userIdStr = getOrCreateUserId(userCookie, response);
-        UUID userId = UUID.fromString(userIdStr);
+        UUID userId = getOrCreateUserId(rawUserId, response);
+        UUID contextId = getOrCreateContextId(rawContextId, response);
 
-        contextKey = getContextKey(contextKey, response);
-        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
+        Context context = contextStore.resolveContext(contextId, userId);
+
+        response.setHeader("Cache-Control", "no-store");
 
         return ResponseEntity.ok(
                 billService.getUnpaidBills(context.userId())
@@ -96,15 +102,16 @@ public class BillController {
     public ResponseEntity<BillDetail> updateBill(
             @PathVariable UUID billId,
             @RequestBody BillDetail request,
-            @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
-            @CookieValue(value = USER_COOKIE, required = false) String userCookie,
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String rawContextId,
+            @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        String userIdStr = getOrCreateUserId(userCookie, response);
-        UUID userId = UUID.fromString(userIdStr);
+        UUID userId = getOrCreateUserId(rawUserId, response);
+        UUID contextId = getOrCreateContextId(rawContextId, response);
 
-        contextKey = getContextKey(contextKey, response);
-        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
+        Context context = contextStore.resolveContext(contextId, userId);
+
+        response.setHeader("Cache-Control", "no-store");
 
         return ResponseEntity.ok(
                 billService.updateBill(billId, context.userId(), request)
@@ -116,16 +123,18 @@ public class BillController {
      * ===================================================== */
 
     @DeleteMapping("/{billId}")
-    public ResponseEntity<Void> deleteBill(@PathVariable UUID billId,
-                                           @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
-                                           @CookieValue(value = USER_COOKIE, required = false) String userCookie,
-                                           HttpServletResponse response) {
+    public ResponseEntity<Void> deleteBill(
+            @PathVariable UUID billId,
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String rawContextId,
+            @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
+            HttpServletResponse response
+    ) {
+        UUID userId = getOrCreateUserId(rawUserId, response);
+        UUID contextId = getOrCreateContextId(rawContextId, response);
 
-        String userIdStr = getOrCreateUserId(userCookie, response);
-        UUID userId = UUID.fromString(userIdStr);
+        Context context = contextStore.resolveContext(contextId, userId);
 
-        contextKey = getContextKey(contextKey, response);
-        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
+        response.setHeader("Cache-Control", "no-store");
 
         billService.deleteBill(billId, context.userId());
         return ResponseEntity.noContent().build();
@@ -137,15 +146,16 @@ public class BillController {
 
     @PostMapping("/overdue/run")
     public ResponseEntity<String> runOverdueUpdate(
-            @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
-            @CookieValue(value = USER_COOKIE, required = false) String userCookie,
-            HttpServletResponse response) {
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String rawContextId,
+            @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
+            HttpServletResponse response
+    ) {
+        UUID userId = getOrCreateUserId(rawUserId, response);
+        UUID contextId = getOrCreateContextId(rawContextId, response);
 
-        String userIdStr = getOrCreateUserId(userCookie, response);
-        UUID userId = UUID.fromString(userIdStr);
+        Context context = contextStore.resolveContext(contextId, userId);
 
-        contextKey = getContextKey(contextKey, response);
-        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
+        response.setHeader("Cache-Control", "no-store");
 
         billService.updateOverdue();
         return ResponseEntity.ok("Overdue bills updated");

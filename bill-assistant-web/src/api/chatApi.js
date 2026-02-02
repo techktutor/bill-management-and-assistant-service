@@ -5,3 +5,9 @@ export const sendChatMessage = (message) =>
 
 export const getChatHistory = () =>
   httpClient.get("/api/chat/history").then((res) => res.data);
+
+/**
+ * Get current contextId (used to scope chat history)
+ */
+export const getChatContext = () =>
+  httpClient.get("/api/context").then((res) => res.data.contextId);

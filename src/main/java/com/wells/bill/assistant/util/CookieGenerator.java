@@ -3,7 +3,6 @@ package com.wells.bill.assistant.util;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
-import org.springframework.web.bind.annotation.CookieValue;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -13,43 +12,43 @@ public final class CookieGenerator {
     public static final String CONTEXT_COOKIE = "CTX_ID";
     public static final String USER_COOKIE = "USER_ID";
 
-    public static String getOrCreateUserId(
-            @CookieValue(value = USER_COOKIE, required = false) String userId,
-            HttpServletResponse response
-    ) {
+    private CookieGenerator() {}
+
+    public static UUID getOrCreateUserId(String raw, HttpServletResponse response) {
+        UUID userId = parseUuid(raw);
         if (userId == null) {
-            userId = UUID.randomUUID().toString();
-
-            ResponseCookie cookie = ResponseCookie.from(USER_COOKIE, userId)
-                    .httpOnly(true)
-                    .secure(false)
-                    .sameSite("Lax")
-                    .path("/")
-                    .maxAge(Duration.ofDays(90))
-                    .build();
-
-            response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+            userId = UUID.randomUUID();
+            addCookie(response, USER_COOKIE, userId.toString(), Duration.ofDays(90));
         }
         return userId;
     }
 
-    public static String getContextKey(
-            String contextKey,
-            HttpServletResponse response
-    ) {
-        if (contextKey == null) {
-            contextKey = UUID.randomUUID().toString();
-
-            ResponseCookie cookie = ResponseCookie.from(CONTEXT_COOKIE, contextKey)
-                    .httpOnly(true)
-                    .secure(false)
-                    .sameSite("Lax")
-                    .path("/")
-                    .maxAge(Duration.ofMinutes(30))
-                    .build();
-
-            response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    public static UUID getOrCreateContextId(String raw, HttpServletResponse response) {
+        UUID contextId = parseUuid(raw);
+        if (contextId == null) {
+            contextId = UUID.randomUUID();
+            addCookie(response, CONTEXT_COOKIE, contextId.toString(), Duration.ofMinutes(30));
         }
-        return contextKey;
+        return contextId;
+    }
+
+    private static void addCookie(HttpServletResponse response, String name, String value, Duration maxAge) {
+        ResponseCookie cookie = ResponseCookie.from(name, value)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(maxAge)
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private static UUID parseUuid(String raw) {
+        try {
+            return raw == null ? null : UUID.fromString(raw);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }

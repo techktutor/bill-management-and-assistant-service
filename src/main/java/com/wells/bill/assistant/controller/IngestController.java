@@ -37,16 +37,18 @@ public class IngestController {
     private final ContextStore contextStore;
 
     @PostMapping(value = "/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> ingest(@RequestPart("files") List<MultipartFile> files,
-                                    @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
-                                    @CookieValue(value = USER_COOKIE, required = false) String userCookie,
-                                    HttpServletResponse response) {
+    public ResponseEntity<?> ingest(
+            @RequestPart("files") List<MultipartFile> files,
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String rawContextId,
+            @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
+            HttpServletResponse response
+    ) {
+        UUID userId = getOrCreateUserId(rawUserId, response);
+        UUID contextId = getOrCreateContextId(rawContextId, response);
 
-        String userIdStr = getOrCreateUserId(userCookie, response);
-        UUID userId = UUID.fromString(userIdStr);
+        Context context = contextStore.resolveContext(contextId, userId);
 
-        contextKey = getContextKey(contextKey, response);
-        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
+        response.setHeader("Cache-Control", "no-store");
 
         if (files == null || files.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(

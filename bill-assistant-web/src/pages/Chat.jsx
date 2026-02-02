@@ -1,61 +1,76 @@
 import { useEffect, useRef, useState } from "react";
-import { sendChatMessage } from "../api/chatApi";
-
-const STORAGE_KEY = "bill-assistant-chat";
+import { sendChatMessage, getChatContext } from "../api/chatApi";
 
 export default function Chat() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [typing, setTyping] = useState(false);
+  const [contextId, setContextId] = useState(null);
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const containerRef = useRef(null);
+  const userScrolledUp = useRef(false);
 
   /* =========================
-   * 1️⃣ Load chat from storage
+   * 1️⃣ Load contextId from backend
    * ========================= */
   useEffect(() => {
-    const saved = sessionStorage.getItem(STORAGE_KEY);
+    getChatContext()
+      .then(setContextId)
+      .catch(() => setContextId("unknown"));
+  }, []);
+
+  const storageKey = contextId
+    ? `bill-assistant-chat-${contextId}`
+    : null;
+
+  /* =========================
+   * 2️⃣ Load chat for context
+   * ========================= */
+  useEffect(() => {
+    if (!storageKey) return;
+
+    const saved = sessionStorage.getItem(storageKey);
     if (saved) {
       try {
         setMessages(JSON.parse(saved));
       } catch {
-        sessionStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(storageKey);
+        setMessages(getWelcomeMessage());
       }
     } else {
-      setMessages([
-        {
-          from: "bot",
-          text: "Hi! I’m your Bill Assistant. I can help you pay bills, check payments, or answer questions.",
-        },
-      ]);
+      setMessages(getWelcomeMessage());
     }
-  }, []);
+  }, [storageKey]);
 
   /* =========================
-   * 2️⃣ Persist chat on change
+   * 3️⃣ Persist chat per context
    * ========================= */
   useEffect(() => {
-    if (messages.length > 0) {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-    }
+    if (!storageKey || messages.length === 0) return;
+    sessionStorage.setItem(storageKey, JSON.stringify(messages));
+  }, [messages, storageKey]);
+
+  /* =========================
+   * 4️⃣ Auto-scroll (safe)
+   * ========================= */
+  useEffect(() => {
+    if (userScrolledUp.current) return;
+
+    bottomRef.current?.scrollIntoView({
+      behavior: "auto",
+    });
   }, [messages]);
 
   /* =========================
-   * 3️⃣ Auto-scroll to bottom
-   * ========================= */
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typing]);
-
-  /* =========================
-   * 4️⃣ Keep cursor inside input
+   * 5️⃣ Keep cursor in input
    * ========================= */
   useEffect(() => {
     if (!typing) {
       inputRef.current?.focus();
     }
-  }, [typing, messages]);
+  }, [typing]);
 
   const send = async (text) => {
     if (!text.trim() || typing) return;
@@ -66,14 +81,20 @@ export default function Chat() {
     try {
       const reply = await sendChatMessage(text);
       setMessages((m) => [...m, { from: "bot", text: reply }]);
+    } catch {
+      setMessages((m) => [
+        ...m,
+        {
+          from: "bot",
+          text:
+            "Sorry, something went wrong while processing your request. Please try again.",
+        },
+      ]);
     } finally {
       setTyping(false);
     }
   };
 
-  /* =========================
-   * 5️⃣ Enter to send
-   * ========================= */
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -91,7 +112,19 @@ export default function Chat() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-auto space-y-3 p-4">
+      <div
+        ref={containerRef}
+        onScroll={() => {
+          const el = containerRef.current;
+          if (!el) return;
+
+          const nearBottom =
+            el.scrollHeight - el.scrollTop - el.clientHeight < 50;
+
+          userScrolledUp.current = !nearBottom;
+        }}
+        className="flex-1 overflow-auto space-y-3 p-4"
+      >
         {messages.map((m, i) => (
           <div
             key={i}
@@ -113,7 +146,6 @@ export default function Chat() {
           </div>
         ))}
 
-        {/* Typing indicator */}
         {typing && (
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <span className="text-lg">🤖</span>
@@ -128,7 +160,8 @@ export default function Chat() {
       <div className="flex gap-2 p-4 border-t">
         <textarea
           ref={inputRef}
-          className="flex-1 border rounded-lg px-3 py-2 resize-none"
+          className="flex-1 border rounded-lg px-3 py-2 resize-none
+            focus:outline-none focus:ring-2 focus:ring-blue-500"
           rows={2}
           value={input}
           disabled={typing}
@@ -139,7 +172,8 @@ export default function Chat() {
         <button
           type="button"
           disabled={typing || !input.trim()}
-          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 rounded-lg"
+          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50
+            text-white px-4 rounded-lg"
           onClick={() => {
             send(input);
             setInput("");
@@ -150,4 +184,17 @@ export default function Chat() {
       </div>
     </div>
   );
+}
+
+/* =========================
+ * Helpers
+ * ========================= */
+function getWelcomeMessage() {
+  return [
+    {
+      from: "bot",
+      text:
+        "Hi! I’m your Bill Assistant 🤖. I can help you pay bills, check payments, or answer questions.",
+    },
+  ];
 }

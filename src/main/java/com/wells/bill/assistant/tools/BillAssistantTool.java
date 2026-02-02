@@ -6,7 +6,6 @@ import com.wells.bill.assistant.model.BillDetail;
 import com.wells.bill.assistant.model.BillExplanation;
 import com.wells.bill.assistant.model.BillStatus;
 import com.wells.bill.assistant.service.BillService;
-import com.wells.bill.assistant.store.ContextStore;
 import com.wells.bill.assistant.util.ConversationContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +28,6 @@ import java.util.stream.Collectors;
 public class BillAssistantTool {
 
     private final BillService billService;
-    private final ContextStore contextStore;
 
     /* =====================================================
      * 1️⃣ READ-ONLY BILL QUERIES (SAFE FOR AI)

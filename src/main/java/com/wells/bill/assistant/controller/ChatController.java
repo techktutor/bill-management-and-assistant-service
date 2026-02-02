@@ -30,20 +30,21 @@ public class ChatController {
     private final ContextStore contextStore;
 
     @PostMapping
-    public ResponseEntity<String> chat(@RequestBody String userMessage,
-                                       @CookieValue(value = CONTEXT_COOKIE, required = false) String contextKey,
-                                       @CookieValue(value = USER_COOKIE, required = false) String userCookie,
-                                       HttpServletResponse response) {
+    public ResponseEntity<String> chat(
+            @RequestBody String userMessage,
+            @CookieValue(value = CONTEXT_COOKIE, required = false) String rawContextId,
+            @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
+            HttpServletResponse response
+    ) {
+        UUID userId = getOrCreateUserId(rawUserId, response);
+        UUID contextId = getOrCreateContextId(rawContextId, response);
 
-        String userIdStr = getOrCreateUserId(userCookie, response);
-        UUID userId = UUID.fromString(userIdStr);
+        Context context = contextStore.resolveContext(contextId, userId);
 
-        contextKey = getContextKey(contextKey, response);
-        Context context = contextStore.getOrCreateByContextKey(contextKey, userId);
+        response.setHeader("Cache-Control", "no-store");
 
         log.info("Received chat request from User= {}, conversationId= {}", context.userId(), context.conversationId());
 
-        // Basic manual validation for nulls (since @Valid only checks annotated fields)
         if (context.conversationId() == null) {
             return ResponseEntity
                     .badRequest()

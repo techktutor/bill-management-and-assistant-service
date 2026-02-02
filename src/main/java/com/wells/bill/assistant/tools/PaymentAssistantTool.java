@@ -4,7 +4,6 @@ import com.wells.bill.assistant.exception.InvalidUserInputException;
 import com.wells.bill.assistant.model.*;
 import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.PaymentService;
-import com.wells.bill.assistant.store.ContextStore;
 import com.wells.bill.assistant.store.PaymentConfirmationStoreInMemory;
 import com.wells.bill.assistant.util.ConversationContextHolder;
 import com.wells.bill.assistant.util.IdempotencyKeyGenerator;
@@ -28,7 +27,6 @@ public class PaymentAssistantTool {
 
     private final BillService billService;
     private final PaymentService paymentService;
-    private final ContextStore contextStore;
     private final PaymentConfirmationStoreInMemory confirmationStore;
 
     /* =====================================================
@@ -36,7 +34,7 @@ public class PaymentAssistantTool {
      * ===================================================== */
 
     @Tool(
-            name = "paymentRequest",
+            name = "paymentIntentRequest",
             description = """
                     Request explicit user confirmation before paying a bill.
                     Confirmation expires automatically after 5 minutes.
@@ -121,9 +119,9 @@ public class PaymentAssistantTool {
     @Tool(
             name = "confirmAndPayBill",
             description = """
-                    Confirm and execute payment for a bill.
+                    Confirm and create payment intent for a bill.
                     Requires a valid, unexpired confirmation token.
-                    This tool creates a payment intent and marks the bill as PAID.
+                    This tool creates a payment intent only.
                     """
     )
     public String confirmAndPayBill(@ToolParam(description = "Confirmation token") String confirmationToken) {
@@ -137,9 +135,9 @@ public class PaymentAssistantTool {
         );
 
         PaymentConfirmationToken stored = confirmationStore.find(userId)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException("Confirmation token expired or invalid.")
-                        );
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Confirmation token expired or invalid.")
+                );
 
         if (!stored.token().equals(confirmationToken) || !stored.userId().equals(userId)) {
             return "Confirmation token does not match bill or user";
@@ -161,7 +159,7 @@ public class PaymentAssistantTool {
         req.setBillId(bill.id());
         req.setUserId(userId);
         req.setAmount(bill.amountDue().amount());
-        req.setCurrency(bill.amountDue().currency().getSymbol());
+        req.setCurrency(bill.amountDue().currency().getCurrencyCode());
         req.setScheduledDate(stored.scheduledDate());
         req.setIdempotencyKey(idempotencyKey);
         req.setExecutedBy(ExecutedBy.AI_SUGGESTED);

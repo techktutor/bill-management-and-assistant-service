@@ -8,6 +8,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface ContextRepository extends JpaRepository<ContextEntity, String> {
+public interface ContextRepository extends JpaRepository<ContextEntity, UUID> {
     Optional<ContextEntity> findTopByUserIdOrderByLastAccessTimeDesc(UUID userId);
 }

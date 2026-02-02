@@ -1,12 +1,14 @@
 package com.wells.bill.assistant.store;
 
 import com.wells.bill.assistant.entity.ContextEntity;
-import com.wells.bill.assistant.exception.InvalidContextException;
 import com.wells.bill.assistant.model.Context;
 import com.wells.bill.assistant.repository.ContextRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.util.UUID;
 
 @Component
@@ -16,47 +18,50 @@ public class ContextStore {
     private static final long EXPIRY_MS = 10 * 60 * 1000;
 
     private final ContextRepository repository;
+    private final Clock clock;
 
-    /* =========================
-     * HTTP path (browser)
-     * ========================= */
-    public Context getOrCreateByContextKey(String contextKey, UUID userId) {
-        long now = System.currentTimeMillis();
+    @Transactional
+    public Context resolveContext(UUID contextId, UUID userId) {
+        long now = clock.millis();
 
-        return repository.findById(contextKey)
-                .map(entity -> {
-                    if (isExpired(entity, now)) {
-                        repository.delete(entity);
-                        return createNewContext(contextKey, userId);
-                    }
-                    entity.touch();
-                    repository.save(entity);
-                    return toContext(entity);
-                })
-                .orElseGet(() -> createNewContext(contextKey, userId));
+        ContextEntity entity = repository.findById(contextId)
+                .map(existing -> refresh(existing, userId, now))
+                .orElseGet(() -> create(contextId, userId, now));
+
+        return new Context(
+                entity.getContextId(),
+                entity.getConversationId(),
+                entity.getUserId()
+        );
     }
 
-    /* =========================
-     * Internals
-     * ========================= */
-    private Context createNewContext(String contextKey, UUID userId) {
-        ContextEntity entity = new ContextEntity(
-                contextKey,
-                userId,
-                UUID.randomUUID()
-        );
-        repository.save(entity);
-        return toContext(entity);
+    private ContextEntity refresh(ContextEntity entity, UUID userId, long now) {
+        if (!entity.getUserId().equals(userId)) {
+            return repository.save(
+                    new ContextEntity(entity.getContextId(), userId, UUID.randomUUID(), now)
+            );
+        }
+
+        if (isExpired(entity, now)) {
+            entity.resetConversation(now);
+        } else {
+            entity.touch(now);
+        }
+
+        return repository.save(entity);
+    }
+
+    private ContextEntity create(UUID contextId, UUID userId, long now) {
+        try {
+            return repository.save(
+                    new ContextEntity(contextId, userId, UUID.randomUUID(), now)
+            );
+        } catch (DataIntegrityViolationException e) {
+            return repository.findById(contextId).orElseThrow();
+        }
     }
 
     private boolean isExpired(ContextEntity entity, long now) {
-        return (now - entity.getLastAccessTime()) > EXPIRY_MS;
-    }
-
-    private Context toContext(ContextEntity entity) {
-        return new Context(
-                entity.getUserId(),
-                entity.getConversationId()
-        );
+        return now - entity.getLastAccessTime() > EXPIRY_MS;
     }
 }

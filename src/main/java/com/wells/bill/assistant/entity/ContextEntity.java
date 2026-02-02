@@ -1,39 +1,49 @@
 package com.wells.bill.assistant.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
 
 import java.util.UUID;
 
 @Getter
-@Setter
 @Entity
-@Table(name = "user_context")
+@Table(
+        name = "user_context",
+        indexes = @Index(name = "idx_last_access", columnList = "lastAccessTime")
+)
+@NoArgsConstructor
 public class ContextEntity {
 
     @Id
-    private String contextKey;
+    @Column(nullable = false, updatable = false)
+    private UUID contextId;
 
+    @Column(nullable = false, updatable = false)
     private UUID userId;
+
+    @Column(nullable = false)
     private UUID conversationId;
+
+    @Column(nullable = false)
     private long lastAccessTime;
 
-    public ContextEntity() {
-    }
+    @Version
+    private long version;
 
-    public ContextEntity(String contextKey, UUID userId, UUID conversationId) {
-        this.contextKey = contextKey;
+    public ContextEntity(UUID contextId, UUID userId, UUID conversationId, long now) {
+        this.contextId = contextId;
         this.userId = userId;
         this.conversationId = conversationId;
-        this.lastAccessTime = System.currentTimeMillis();
+        this.lastAccessTime = now;
     }
 
-    public void touch() {
-        this.lastAccessTime = System.currentTimeMillis();
+    public void touch(long now) {
+        this.lastAccessTime = now;
     }
 
+    public void resetConversation(long now) {
+        this.conversationId = UUID.randomUUID();
+        this.lastAccessTime = now;
+    }
 }
-
