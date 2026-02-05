@@ -24,6 +24,7 @@ import java.util.UUID;
                 @Index(name = "idx_payments_payment_id", columnList = "payment_id", unique = true),
                 @Index(name = "idx_payments_user_id", columnList = "user_id"),
                 @Index(name = "idx_payments_bill_id", columnList = "bill_id"),
+                @Index(name = "idx_payments_provider_name", columnList = "provider_name"),
                 @Index(name = "idx_payments_idempotency_key", columnList = "idempotency_key", unique = true),
                 @Index(name = "idx_payments_status", columnList = "status"),
                 @Index(name = "idx_payments_scheduled_date", columnList = "scheduled_date")
@@ -46,6 +47,9 @@ public class PaymentEntity {
 
     @Column(name = "bill_id", nullable = false)
     private UUID billId;
+
+    @Column(name = "provider_name")
+    private String providerName;
 
     @Column(name = "currency", nullable = false, length = 3)
     private String currency;

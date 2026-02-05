@@ -26,6 +26,8 @@ public class PaymentResponse {
 
     private UUID billId;
 
+    private String providerName;
+
     private LocalDate scheduledDate;
 
     private Instant executedAt;

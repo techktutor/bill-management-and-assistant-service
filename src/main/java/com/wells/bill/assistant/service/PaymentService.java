@@ -66,6 +66,7 @@ public class PaymentService {
         PaymentEntity payment = createPaymentEntity(req, bill);
 
         PaymentEntity saved = paymentRepository.save(payment);
+
         log.info("Payment intent created with paymentId= {} for billId= {}", saved.getId(), saved.getBillId());
         return toIntentResponse(saved);
     }
@@ -74,6 +75,7 @@ public class PaymentService {
         PaymentEntity payment = new PaymentEntity();
         payment.setUserId(req.getUserId());
         payment.setBillId(req.getBillId());
+        payment.setProviderName(bill.providerName());
         payment.setAmount(req.getAmount());
         payment.setCurrency(req.getCurrency() == null ? bill.amountDue().currency().getCurrencyCode() : req.getCurrency());
         payment.setIdempotencyKey(req.getIdempotencyKey());
@@ -222,6 +224,24 @@ public class PaymentService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<PaymentResponse> findByUserIdAndStatus(UUID userId, PaymentStatus status) {
+        log.info("Fetching payments for userId= {}, status= {}", userId, status);
+        return paymentRepository.findByUserIdAndStatus(userId , status)
+                .stream()
+                .map(this::toPaymentResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PaymentResponse> findByUserIdAndBillProviderName(UUID userId, String providerName) {
+        log.info("Fetching payments for userId= {}, providerName= {}", userId, providerName);
+        return paymentRepository.findByUserIdAndBillProviderName(userId, providerName)
+                .stream()
+                .map(this::toPaymentResponse)
+                .toList();
+    }
+
     private void markSuccess(PaymentEntity payment, String gatewayRef) {
         transition(payment, PaymentStatus.SUCCESS);
         payment.setGatewayReferenceId(gatewayRef);
@@ -267,6 +287,7 @@ public class PaymentService {
         r.setCurrency(p.getCurrency());
         r.setCustomerId(p.getUserId());
         r.setBillId(p.getBillId());
+        r.setProviderName(p.getProviderName());
         r.setScheduledDate(p.getScheduledDate());
         r.setExecutedAt(p.getExecutedAt());
         r.setCancelledAt(p.getCancelledAt());

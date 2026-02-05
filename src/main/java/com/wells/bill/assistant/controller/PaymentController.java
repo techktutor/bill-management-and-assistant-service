@@ -37,12 +37,7 @@ public class PaymentController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
-
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
+        Context context = getContext(rawContextId, rawUserId, response);
 
         req.setUserId(context.userId());
         String idempotencyKey = IdempotencyKeyGenerator.generate(
@@ -67,12 +62,7 @@ public class PaymentController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
-
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
+        Context context = getContext(rawContextId, rawUserId, response);
 
         req.setUserId(context.userId());
         req.setPaymentId(paymentId);
@@ -90,12 +80,7 @@ public class PaymentController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
-
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
+        Context context = getContext(rawContextId, rawUserId, response);
 
         req.setUserId(context.userId());
         if (req.getScheduledDate() == null) {
@@ -164,12 +149,8 @@ public class PaymentController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
+        Context context = getContext(rawContextId, rawUserId, response);
 
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
         log.info("Listing payments for user: {}", context.userId());
 
         List<PaymentResponse> payments = paymentService.getPaymentsForUser(context.userId());
@@ -190,18 +171,23 @@ public class PaymentController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
-
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
+        Context context = getContext(rawContextId, rawUserId, response);
 
         paymentRequest.setUserId(context.userId());
         paymentRequest.setExecutedBy(ExecutedBy.USER);
 
         paymentService.executeScheduledPayments(LocalDate.now(), paymentRequest);
         return ResponseEntity.ok("Scheduler executed");
+    }
+
+    private Context getContext(String rawContextId, String rawUserId, HttpServletResponse response) {
+        UUID userId = getOrCreateUserId(rawUserId, response);
+        UUID contextId = getOrCreateContextId(rawContextId, response);
+
+        Context context = contextStore.resolveContext(contextId, userId);
+
+        response.setHeader("Cache-Control", "no-store");
+        return context;
     }
 
     private void validateIdempotencyKey(String key) {

@@ -106,17 +106,39 @@ public class BillAssistantTool {
 
         return billService.getUnpaidBills(userId)
                 .stream()
-                .filter(b ->
-                        b.dueDate() != null &&
-                                !b.dueDate().isAfter(endDate)
-                )
+                .filter(b -> b.dueDate() != null && b.dueDate().isBefore(endDate))
+                .toList();
+    }
+
+    @Tool(
+            name = "listBillsDueInNextNDays",
+            description = """
+                    Find unpaid bills that are due within the next N days.
+                    Useful for reminders and alerts.
+                    """
+    )
+    public List<BillDetail> listBillsDueInNextNDays(@ToolParam(description = "Number of days from today") int days) {
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        UUID conversationId = ConversationContextHolder.getConversationId();
+
+        log.info("BillAssistantTool: listBillsDueInNextNDays for userId={} and conversationId={}", userId, conversationId);
+
+        LocalDate endDate = LocalDate.now().plusDays(days);
+
+        return billService.getUnpaidBills(userId)
+                .stream()
+                .filter(b -> b.dueDate() != null && b.dueDate().isBefore(endDate))
                 .toList();
     }
 
     @Tool(
             name = "listBillsDueAfter",
             description = """
-                    Find unpaid bills that are due within the next N days.
+                    Find unpaid bills that are due after next N days.
                     Useful for reminders and alerts.
                     """
     )
@@ -130,13 +152,11 @@ public class BillAssistantTool {
 
         log.info("BillAssistantTool: listBillsDueAfter for userId={}, conversationId={}", userId, conversationId);
 
-        LocalDate endDate = LocalDate.now().plusDays(days);
+        LocalDate starDate = LocalDate.now().plusDays(days);
 
         return billService.getUnpaidBills(userId)
                 .stream()
-                .filter(b ->
-                        b.dueDate() != null && b.dueDate().isAfter(endDate)
-                )
+                .filter(b -> b.dueDate() != null && b.dueDate().isAfter(starDate))
                 .toList();
     }
 

@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS payments (
 
     user_id UUID NOT NULL,
     bill_id UUID NOT NULL,  -- logical reference ONLY (no FK)
+    provider_name VARCHAR(255),
 
     currency CHAR(3) NOT NULL,
     amount NUMERIC(12,2) NOT NULL,
@@ -105,6 +106,9 @@ CREATE INDEX IF NOT EXISTS idx_payments_user_id
 
 CREATE INDEX IF NOT EXISTS idx_payments_bill_id
     ON payments (bill_id);
+
+CREATE INDEX IF NOT EXISTS idx_payments_provider_name
+    ON payments (provider_name);
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_idempotency_key
     ON payments (idempotency_key);

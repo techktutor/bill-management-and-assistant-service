@@ -53,6 +53,7 @@ public class PaymentAssistantTool {
         log.info("PaymentAssistantTool: Creating payment request for userId={}, billName={}, scheduledAfterDays={}",
                 userId, billName, scheduledAfterDays
         );
+
         BillDetail bill = getDetails(userId, billName);
 
         if (bill.status() != BillStatus.VERIFIED) {
@@ -67,10 +68,9 @@ public class PaymentAssistantTool {
             );
         }
 
-        LocalDate scheduledDate =
-                scheduledAfterDays > 0
-                        ? LocalDate.now().plusDays(scheduledAfterDays)
-                        : null;
+        LocalDate scheduledDate = scheduledAfterDays > 0
+                ? LocalDate.now().plusDays(scheduledAfterDays)
+                : null;
 
         String token = UUID.randomUUID().toString();
 
@@ -135,16 +135,11 @@ public class PaymentAssistantTool {
         );
 
         PaymentConfirmationToken stored = confirmationStore.find(userId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Confirmation token expired or invalid.")
-                );
+                .orElse(null);
 
-        if (!stored.token().equals(confirmationToken) || !stored.userId().equals(userId)) {
+        if (null == stored || !stored.token().equals(confirmationToken) || !stored.userId().equals(userId)) {
             return "Confirmation token does not match bill or user";
         }
-
-        // One-time use
-        confirmationStore.delete(userId);
 
         BillDetail bill = billService.getBill(stored.billId(), userId);
 
@@ -164,17 +159,14 @@ public class PaymentAssistantTool {
         req.setIdempotencyKey(idempotencyKey);
         req.setExecutedBy(ExecutedBy.AI_SUGGESTED);
 
-        log.info("Confirming and executing payment: billId={}, userId={}, amount={}, currency={}, scheduledDate={}",
-                bill.id(), userId, bill.amountDue().amount(),
-                bill.amountDue().currency().getSymbol(),
-                stored.scheduledDate()
-        );
-
         var intent = paymentService.createPaymentIntent(req);
 
         log.info("Payment executed via AI tool: billId={}, paymentId={}, scheduledDate={}",
                 intent.getBillId(), intent.getPaymentId(), intent.getScheduledDate()
         );
+
+        // One-time use
+        confirmationStore.delete(userId);
 
         return intent.getScheduledDate() == null
                 ? "Payment completed successfully."
@@ -188,8 +180,16 @@ public class PaymentAssistantTool {
                     This is a read-only helper tool and does not modify any data.
                     """
     )
-    public PaymentResponse getPaymentDetails(@ToolParam(description = "Payment identifier") UUID paymentId) {
-        return paymentService.getPaymentById(paymentId);
+    public PaymentResponse getPaymentDetails(@ToolParam(description = "Payment identifier") String providerName) {
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+
+        log.info("Retrieving payment details for userId={}, providerName={}",
+                userId, providerName
+        );
+        return paymentService.findByUserIdAndBillProviderName(userId, providerName).getFirst();
     }
 
     @Tool(
@@ -199,8 +199,12 @@ public class PaymentAssistantTool {
                     Useful for answering user questions about payment progress or failure.
                     """
     )
-    public String explainPaymentStatus(@ToolParam(description = "Payment identifier") UUID paymentId) {
-        PaymentResponse payment = paymentService.getPaymentById(paymentId);
+    public String explainPaymentStatus(@ToolParam(description = "Payment identifier") String providerName) {
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+        PaymentResponse payment = paymentService.findByUserIdAndBillProviderName(userId, providerName).getFirst();
 
         return switch (payment.getStatus()) {
 
@@ -296,8 +300,12 @@ public class PaymentAssistantTool {
                     Read-only helper tool.
                     """
     )
-    public String explainScheduledPayment(@ToolParam(description = "Payment identifier") UUID paymentId) {
-        PaymentResponse payment = paymentService.getPaymentById(paymentId);
+    public String explainScheduledPayment(@ToolParam(description = "Payment identifier") String providerName) {
+        UUID userId = ConversationContextHolder.getUserId();
+        if (userId == null) {
+            throw new InvalidUserInputException("No user context bound to tool execution");
+        }
+        PaymentResponse payment = paymentService.findByUserIdAndBillProviderName(userId, providerName).getFirst();
 
         if (payment.getScheduledDate() == null) {
             return "This payment is not scheduled. It was processed immediately.";
@@ -331,20 +339,20 @@ public class PaymentAssistantTool {
                     Read-only AI helper tool.
                     """
     )
-    public PaymentAnomalyReport paymentAnomalyDetection(@ToolParam(description = "Payment identifier") UUID paymentId) {
+    public PaymentAnomalyReport paymentAnomalyDetection(@ToolParam(description = "Payment identifier") String providerName) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
         }
 
-        PaymentResponse current = paymentService.getPaymentById(paymentId);
+        PaymentResponse current = paymentService.findByUserIdAndBillProviderName(userId, providerName).getFirst();
         List<PaymentResponse> allPayments = paymentService.getPaymentsForUser(userId);
 
         List<String> signals = new ArrayList<>();
         int score = 0;
 
         double avgAmount = allPayments.stream()
-                .filter(p -> !p.getPaymentId().equals(paymentId))
+                .filter(p -> !p.getPaymentId().equals(current.getPaymentId()))
                 .mapToDouble(p -> p.getAmount().doubleValue())
                 .average()
                 .orElse(current.getAmount().doubleValue());
