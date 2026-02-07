@@ -1,7 +1,145 @@
-# 🏗️ System Architecture
+# 💡 AI-Powered Bill Management & Payments Platform (Spring AI + Fintech Architecture)
+
+This project is a **fintech-grade bill automation system** powered by **Spring AI**, combining intelligent bill assistance,
+secure payment execution, and ledger-backed accounting.
+
+Spring AI acts as the **central intelligence backbone**, enabling:
+
+- Context-aware bill understanding through RAG
+- Secure tool-driven automation (payments, reminders)
+- Policy-enforced execution with user confirmations
+- Natural language interaction across the entire billing lifecycle
+
+---
+
+## ✨ Features (Spring AI–Driven Fintech Automation)
+
+This platform goes beyond traditional bill management by integrating:
+
+- AI-powered bill assistant with Spring AI orchestration
+- Stripe-like PaymentIntent lifecycle
+- Ledger-backed accounting correctness
+- RAG semantic retrieval with pgvector
+- Scheduler automation for reminders and payments
+- Outbox pattern for reliable notifications
+
+---
+
+## 🌟 System Design Highlights
+
+> Spring AI acts as the intelligence backbone of the system, enabling secure tool-driven automation and RAG-powered contextual bill assistance.
+
+### Key Design Features
+
+- **Stripe-like PaymentIntent Lifecycle**
+    - Supports payment authorization + capture flow
+    - Prevents inconsistent payment execution
+
+- **Ledger-Backed Accounting**
+    - Every payment generates immutable debit/credit ledger entries
+    - Ensures auditability and financial correctness
+
+- **AI Assistant with Secure Tool Execution**
+    - LLM does not directly mutate database state
+    - All actions go through validated backend tools
+
+- **RAG (Retrieval-Augmented Generation) with pgvector**
+    - Bills and payment history are embedded for semantic retrieval
+    - Assistant answers are grounded in user-specific documents
+
+- **Scheduler + Automation Engine**
+    - Detects upcoming due bills
+    - Supports reminders and scheduled payments
+
+- **Outbox Pattern for Reliable Event Dispatch**
+    - Prevents lost notifications
+    - Ensures eventual consistency across services
+
+---
+
+## 🛠️ Tech Stack
+
+### ❤️ AI Core (Heart of the Project)
+![Spring AI](https://img.shields.io/badge/Spring%20AI-LLM%20Orchestration-red)
+![RAG](https://img.shields.io/badge/RAG-Vector%20Search-purple)
+![pgvector](https://img.shields.io/badge/pgvector-Embeddings-purple)
+
+Spring AI is the core intelligence layer powering:
+
+- AI Assistant Chat Experience
+- Tool Execution + Policy Engine
+- Retrieval-Augmented Generation (RAG)
+- Context-aware bill and payment automation
+
+✅ **Spring AI is the central backbone that connects user intent → context retrieval → secure backend execution.**
+
+---
+
+### Backend
+![Java](https://img.shields.io/badge/Java-17-blue)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.x-brightgreen)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)
+
+Backend services include:
+
+- Bill Management Service
+- PaymentIntent + Ledger Engine
+- Scheduler + Outbox Event Dispatch
+
+---
+
+### Frontend
+![React](https://img.shields.io/badge/React-18-blue)
+![Vite](https://img.shields.io/badge/Vite-Fast-yellow)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-Utility%20First-teal)
+
+Provides:
+
+- Bill Dashboard
+- Payment UI
+- AI Chat Interface
+
+---
+
+### External Integrations
+![Stripe](https://img.shields.io/badge/Stripe-Payments-indigo)
+![Email](https://img.shields.io/badge/Email%2FSMS-Notifications-orange)
+
+Supports:
+
+- Secure payment execution
+- Alerts, reminders, receipts
+
+---
+
+### DevOps
+![Docker](https://img.shields.io/badge/Docker-Containerized-blue)
+![Compose](https://img.shields.io/badge/Docker%20Compose-Orchestration-lightblue)
+
+Enables:
+
+- Local + production-ready deployment
+- Full environment reproducibility
+
+---
+
+## 🏗️ System Architecture
 
 This project follows a production-inspired architecture combining billing, payments, AI orchestration, RAG retrieval,
 and external integrations.
+
+---
+
+## ❤️ Spring AI — Backbone of the System
+
+At the core of this platform is **Spring AI**, which serves as the intelligence and orchestration engine powering:
+
+- Context-aware bill understanding through RAG
+- Secure tool-based automation (payments, reminders)
+- Policy-driven execution with user confirmations
+- Natural language interaction across the entire billing lifecycle
+
+> **Spring AI is the crux of this system — transforming a traditional bill manager into an AI-driven financial automation platform.**
 
 ---
 
@@ -25,6 +163,7 @@ Frontend communicates with backend services via REST APIs such as:
 GET /api/bills/upcoming
 POST /api/payments/intent
 POST /api/assistant/chat
+
 ```
 
 ---
