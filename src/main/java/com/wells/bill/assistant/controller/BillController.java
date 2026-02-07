@@ -3,7 +3,7 @@ package com.wells.bill.assistant.controller;
 import com.wells.bill.assistant.model.BillDetail;
 import com.wells.bill.assistant.model.Context;
 import com.wells.bill.assistant.service.BillService;
-import com.wells.bill.assistant.store.ContextStore;
+import com.wells.bill.assistant.service.ContextFacade;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +15,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
-import static com.wells.bill.assistant.util.CookieGenerator.*;
+import static com.wells.bill.assistant.util.CookieGenerator.CONTEXT_COOKIE;
+import static com.wells.bill.assistant.util.CookieGenerator.USER_COOKIE;
 
 @Slf4j
 @RestController
@@ -24,7 +25,7 @@ import static com.wells.bill.assistant.util.CookieGenerator.*;
 public class BillController {
 
     private final BillService billService;
-    private final ContextStore contextStore;
+    private final ContextFacade contextFacade;
 
     /* =====================================================
      * 1️⃣ Bill Detail
@@ -37,12 +38,7 @@ public class BillController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
-
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
         return ResponseEntity.ok(billService.getBill(billId, context.userId()));
     }
@@ -58,18 +54,11 @@ public class BillController {
             HttpServletResponse response,
             Pageable pageable
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
-        Context context = contextStore.resolveContext(contextId, userId);
+        log.info("Listing bills for user: {}", context.userId());
 
-        response.setHeader("Cache-Control", "no-store");
-
-        log.info("Listing bills for user: {}", userId);
-
-        return ResponseEntity.ok(
-                billService.getBills(context.userId(), pageable)
-        );
+        return ResponseEntity.ok(billService.getBills(context.userId(), pageable));
     }
 
     /* =====================================================
@@ -82,12 +71,7 @@ public class BillController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
-
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
         return ResponseEntity.ok(
                 billService.getUnpaidBills(context.userId())
@@ -106,12 +90,7 @@ public class BillController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
-
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
         return ResponseEntity.ok(
                 billService.updateBill(billId, context.userId(), request)
@@ -129,12 +108,7 @@ public class BillController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
-
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
         billService.deleteBill(billId, context.userId());
         return ResponseEntity.noContent().build();
@@ -150,12 +124,7 @@ public class BillController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
-
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
         billService.updateOverdue();
         return ResponseEntity.ok("Overdue bills updated");

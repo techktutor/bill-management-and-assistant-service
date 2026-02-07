@@ -2,8 +2,8 @@ package com.wells.bill.assistant.controller;
 
 import com.wells.bill.assistant.exception.InvalidUserInputException;
 import com.wells.bill.assistant.model.*;
+import com.wells.bill.assistant.service.ContextFacade;
 import com.wells.bill.assistant.service.PaymentService;
-import com.wells.bill.assistant.store.ContextStore;
 import com.wells.bill.assistant.util.IdempotencyKeyGenerator;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-import static com.wells.bill.assistant.util.CookieGenerator.*;
+import static com.wells.bill.assistant.util.CookieGenerator.CONTEXT_COOKIE;
+import static com.wells.bill.assistant.util.CookieGenerator.USER_COOKIE;
 
 @Slf4j
 @RestController
@@ -25,7 +26,7 @@ import static com.wells.bill.assistant.util.CookieGenerator.*;
 public class PaymentController {
 
     private final PaymentService paymentService;
-    private final ContextStore contextStore;
+    private final ContextFacade contextFacade;
 
     // -----------------------------
     // Create Payment Intent
@@ -37,7 +38,7 @@ public class PaymentController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        Context context = getContext(rawContextId, rawUserId, response);
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
         req.setUserId(context.userId());
         String idempotencyKey = IdempotencyKeyGenerator.generate(
@@ -62,7 +63,7 @@ public class PaymentController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        Context context = getContext(rawContextId, rawUserId, response);
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
         req.setUserId(context.userId());
         req.setPaymentId(paymentId);
@@ -80,7 +81,7 @@ public class PaymentController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        Context context = getContext(rawContextId, rawUserId, response);
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
         req.setUserId(context.userId());
         if (req.getScheduledDate() == null) {
@@ -149,7 +150,7 @@ public class PaymentController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        Context context = getContext(rawContextId, rawUserId, response);
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
         log.info("Listing payments for user: {}", context.userId());
 
@@ -171,23 +172,13 @@ public class PaymentController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        Context context = getContext(rawContextId, rawUserId, response);
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
         paymentRequest.setUserId(context.userId());
         paymentRequest.setExecutedBy(ExecutedBy.USER);
 
         paymentService.executeScheduledPayments(LocalDate.now(), paymentRequest);
         return ResponseEntity.ok("Scheduler executed");
-    }
-
-    private Context getContext(String rawContextId, String rawUserId, HttpServletResponse response) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
-
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
-        return context;
     }
 
     private void validateIdempotencyKey(String key) {

@@ -5,8 +5,8 @@ package com.wells.bill.assistant.controller;
 
 import com.wells.bill.assistant.model.ChatRequest;
 import com.wells.bill.assistant.model.Context;
+import com.wells.bill.assistant.service.ContextFacade;
 import com.wells.bill.assistant.service.OrchestratorService;
-import com.wells.bill.assistant.store.ContextStore;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -15,9 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
-import java.util.UUID;
 
-import static com.wells.bill.assistant.util.CookieGenerator.*;
+import static com.wells.bill.assistant.util.CookieGenerator.CONTEXT_COOKIE;
+import static com.wells.bill.assistant.util.CookieGenerator.USER_COOKIE;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,7 +27,7 @@ public class ChatController {
     private static final Logger log = LoggerFactory.getLogger(ChatController.class);
 
     private final OrchestratorService orchestrator;
-    private final ContextStore contextStore;
+    private final ContextFacade contextFacade;
 
     @PostMapping
     public ResponseEntity<String> chat(
@@ -36,12 +36,7 @@ public class ChatController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
-
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
         log.info("Received chat request from User= {}, conversationId= {}", context.userId(), context.conversationId());
 

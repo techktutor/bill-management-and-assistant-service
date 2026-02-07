@@ -7,8 +7,8 @@ import com.wells.bill.assistant.model.Context;
 import com.wells.bill.assistant.model.DataQualityDecision;
 import com.wells.bill.assistant.service.BillParser;
 import com.wells.bill.assistant.service.BillService;
+import com.wells.bill.assistant.service.ContextFacade;
 import com.wells.bill.assistant.service.IngestionService;
-import com.wells.bill.assistant.store.ContextStore;
 import com.wells.bill.assistant.util.TextExtractor;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +22,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 
-import static com.wells.bill.assistant.util.CookieGenerator.*;
+import static com.wells.bill.assistant.util.CookieGenerator.CONTEXT_COOKIE;
+import static com.wells.bill.assistant.util.CookieGenerator.USER_COOKIE;
 
 @RestController
 @RequiredArgsConstructor
@@ -34,7 +35,7 @@ public class IngestController {
     private final BillParser billParser;
     private final BillService billService;
     private final IngestionService etlService;
-    private final ContextStore contextStore;
+    private final ContextFacade contextFacade;
 
     @PostMapping(value = "/files", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> ingest(
@@ -43,12 +44,7 @@ public class IngestController {
             @CookieValue(value = USER_COOKIE, required = false) String rawUserId,
             HttpServletResponse response
     ) {
-        UUID userId = getOrCreateUserId(rawUserId, response);
-        UUID contextId = getOrCreateContextId(rawContextId, response);
-
-        Context context = contextStore.resolveContext(contextId, userId);
-
-        response.setHeader("Cache-Control", "no-store");
+        Context context = contextFacade.resolveContext(rawContextId, rawUserId, response);
 
         if (files == null || files.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of(

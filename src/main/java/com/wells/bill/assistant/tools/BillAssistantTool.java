@@ -34,18 +34,18 @@ public class BillAssistantTool {
      * ===================================================== */
 
     @Tool(
-            name = "getBillDetails",
+            name = "getBillDetailsStatus",
             description = "Get complete details of a specific bill using its billId."
     )
-    public BillDetail getBillDetails(@ToolParam(description = "Bill Provider Name") String billName) {
+    public BillDetail getBillDetailsStatus(@ToolParam(description = "Bill provider name") String providerName) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
         }
 
-        log.info("BillAssistantTool: Fetching bill details for billName={}", billName);
+        log.info("BillAssistantTool: Fetching bill details for billName={}", providerName);
 
-        return getDetails(userId, billName);
+        return getDetails(userId, providerName);
     }
 
     @Tool(

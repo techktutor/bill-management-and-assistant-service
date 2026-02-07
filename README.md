@@ -1,114 +1,226 @@
-# AI-Powered Bill Management and Payment Assistant
+# 🏗️ System Architecture
 
-## Project Vision
+This project follows a production-inspired architecture combining billing, payments, AI orchestration, RAG retrieval,
+and external integrations.
 
-Your project originally aimed to build:
+---
 
-### ✔ AI Assistant
+# 1️⃣ Frontend Layer (React / Vite)
 
-That can:
-- Read/understand bills
-- Extract due dates, amounts, biller details
-- Interact with the user conversationally
-- Automate payments
-- Schedule reminders
-- Schedule future payments
-- Manage bills end-to-end using natural language
+The frontend provides the user-facing interface where users can:
 
-### ✔ Bill Management System
+* View bills and due dates
+* Make payments or schedule payments
+* Chat with the AI assistant
 
-With:
-- Bill ingestion
-- Bill storage
-- Bill PDF/text understanding
-- Classification/metadata extraction
-- Reminders
-- Due date tracking
+### Key UI Components
 
-### ✔ Payment Processor Integration
+* Bill Dashboard
+* Payment UI
+* AI Chat Interface
 
-Initially Stripe → later replaced with your own custom Stripe-like processor.
+Frontend communicates with backend services via REST APIs such as:
 
-### ✔ Tool System
+```http
+GET /api/bills/upcoming
+POST /api/payments/intent
+POST /api/assistant/chat
+```
 
-Backend functions exposed to AI agents as "tools" for:
-- Scheduling payments
-- Making instant payments
-- Cancelling scheduled payments
-- Retrieving bill info
+---
 
-### ✔ Microservice-ready Architecture
+# 2️⃣ Backend Services Layer (Spring Boot)
 
-The codebase uses:
-- Spring Boot microservice patterns
-- Repository + service + controller layers
-- Domain-driven objects
-- Outbox pattern
-- Scheduling
-- Tokenization
-- Ledger entries
-- Idempotency
-- Async job processing
+The backend contains the core business services responsible for billing, payments, automation, and tool execution.
 
-All of which align beautifully with the project's target architecture.
+### ✅ Bill Service (Scheduler)
 
-### ✔ AI Agent Orchestration
+* Manages bill CRUD
+* Tracks due dates
+* Runs scheduled jobs for reminders and automation
 
-You started implementing agent tools such as:
-- `schedulePayment`
-- `makeInstantPayment`
-- `cancelScheduledPayment`
+### ✅ Payment Service
 
-This is exactly what an AI agent needs to automate bills in a safe, controlled and deterministic way.
+Handles Stripe-like payment lifecycle:
 
-### ✔ Custom Payment Rail (Stripe-like)
+* PaymentIntent creation
+* Authorization
+* Capture
+* Status tracking
 
-You went beyond the original plan by:
-- Building your own payment-intent + authorize + capture flows
-- Implementing a ledger
-- Tokenization service
-- Outbox dispatcher
-- Scheduled payment engine
+Lifecycle example:
 
-This enhances the original vision and makes the system independent of Stripe.
+```
+CREATED → AUTHORIZED → CAPTURED → SUCCESS
+```
 
-User -> ChatController (POST /api/chat) -> AssistantOrchestratorService.processMessage
--> MemoryAdvisor (ChatMemory) -> RetrievalAugmentationAdvisor -> VectorStoreDocumentRetriever
--> VectorStore (pgvector) -> returns Documents -> Context assembled
--> ChatClient prompt (system + user + context + tools)
--> LLM returns text OR structured tool-invocation
--> If tool-invocation: Orchestrator ensures tool confirmation policy -> execute tool (PaymentToolAdapter/BillToolAdapter)
--> Tool may call MakePaymentService or ScheduledPaymentService
--> Persist operations in DB (payments, scheduled payments)
--> Tool returns structured output -> ChatClient consumes tool output -> final answer returned to user
+### ✅ Ledger Service
 
+Provides accounting correctness by recording immutable ledger entries:
 
-Separate ingestion path:
-User uploads file -> IngestController -> ETLPipelineService
--> Tika extraction -> TokenTextSplitter -> VectorStore.add(documents with metadata)
--> Ingest audit log written (requestId) -> Documents available for retrieval
+* Debit user account
+* Credit vendor/biller
 
+Ensures:
 
-Scheduled execution path:
-ScheduledJob PaymentExecutionService (cron) -> finds due scheduled payments -> executes via MakePaymentService -> updates ScheduledPaymentEntity
+* Auditability
+* Consistency
+* Financial accuracy
 
-## RAG Integration Plan
-com.wells.bill.assistant
-├── controller
-│    ├── ChatController
-│    └── RagQueryController (optional - dev only)
-├── service
-│    ├── AssistantOrchestratorService   <-- integrates RAG
-│    ├── BillService
-│    ├── MakePaymentService
-│    ├── PaymentExecutionService
-│    └── ScheduledPaymentService
-├── rag                                  <-- your RAG engine layer
-│    ├── VectorRetrievalService
-│    ├── RagQueryService   <-- place it here
-│    ├── ChunkRankerService (future)
-│    ├── BillContextStitcher (future)
-├── tools
-│    ├── BillRagTools           <-- use hybrid retrieval here
-│    ├── OverdueExplainerTool   <-- uses retrieval + stitching
-│    └── BillRagQueryTool (optional)
+### ✅ Outbox Processor
+
+Implements reliable event dispatch:
+
+* Events written to Outbox table
+* Dispatcher publishes asynchronously
+
+Prevents lost notifications or partial failures.
+
+### ✅ Tool Execution Layer
+
+AI actions are executed through controlled tools:
+
+* Payment Tool
+* Reminder Tool
+* Info Retrieval Tool
+
+LLM does not directly mutate data:
+
+**LLM → Tool Request → Validation → Safe Execution**
+
+---
+
+# 3️⃣ AI Orchestration Layer
+
+This layer powers the assistant’s intelligence and safety.
+
+### ✅ LLM Orchestrator + Tool Policy Engine
+
+Responsible for:
+
+* Understanding user intent
+* Selecting tools
+* Enforcing execution rules
+
+Example:
+
+* Info tools auto-run
+* Payment tools require user confirmation
+
+### ✅ RAG Retriever (Vector Search)
+
+Retrieval-Augmented Generation ensures factual answers by fetching relevant bill context:
+
+* Past bills
+* Payment history
+* Vendor terms
+
+Powered by:
+
+* pgvector embeddings
+* Semantic similarity search
+
+---
+
+# 4️⃣ Database & Vector Store Layer
+
+This layer persists both structured financial data and semantic embeddings.
+
+### ✅ Billing Database
+
+Stores:
+
+* Bills
+* Due dates
+* Vendor information
+* User bill metadata
+
+### ✅ Payment Ledger Database
+
+Stores immutable accounting records:
+
+* Transactions
+* Debit/credit ledger entries
+* Audit trail
+
+### ✅ Vector Database (pgvector)
+
+Stores:
+
+* Bill/document embeddings
+* Chunk metadata
+* Semantic retrieval index
+
+### Document Ingestion Flow
+
+Uploaded bills/documents are processed as:
+
+1. Text extraction
+2. Chunking
+3. Embedding generation
+4. Storage in Vector DB
+
+---
+
+# 5️⃣ External Services Layer
+
+The platform integrates with external providers.
+
+### 💳 Payment Gateway (Stripe API)
+
+Executes real-world payments:
+
+* Card processing
+* Confirmation
+* Transaction references
+
+### 📩 Notification Service (Email/SMS)
+
+Sends alerts such as:
+
+* Due reminders
+* Payment receipts
+* Failed payment notifications
+
+---
+
+# 🔁 End-to-End Execution Example
+
+### Scenario: User requests AI to pay a bill
+
+1. User asks:
+
+> “Pay my electricity bill tomorrow”
+
+2. Frontend sends request to Assistant API
+
+3. AI Orchestrator identifies intent:
+
+* bill = electricity
+* action = payment
+* schedule = tomorrow
+
+4. RAG Retriever fetches bill context from Vector DB
+
+5. Tool Policy Engine enforces:
+
+⚠️ Payment action → confirmation required
+
+6. User confirms payment
+
+7. Payment Tool triggers Payment Service
+
+8. Payment Service creates PaymentIntent
+
+9. Ledger Service records debit/credit entries
+
+10. Outbox Processor dispatches notification event
+
+11. Notification Service sends payment receipt
+
+## 🏗️ Full System Architecture Diagram
+
+![AI-Powered Bill Management Architecture](./docs/architecture-diagram.png)
+
+## 🏗️ Full System Flow Diagram
+![AI-Powered Bill Management Flow](./docs/system-flow-diagram.png)

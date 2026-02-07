@@ -2,7 +2,9 @@ package com.wells.bill.assistant.service;
 
 import com.wells.bill.assistant.model.ChatRequest;
 import com.wells.bill.assistant.tools.BillAssistantTool;
-import com.wells.bill.assistant.tools.PaymentAssistantTool;
+import com.wells.bill.assistant.tools.PaymentExecutionTool;
+import com.wells.bill.assistant.tools.PaymentInsightsTool;
+import com.wells.bill.assistant.tools.PaymentQueryTool;
 import com.wells.bill.assistant.util.ConversationContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +23,9 @@ public class OrchestratorService {
 
     private final ChatClient chatClient;
     private final BillAssistantTool billAssistantTool;
-    private final PaymentAssistantTool paymentAssistantTool;
+    private final PaymentQueryTool paymentQueryTool;
+    private final PaymentInsightsTool paymentInsightsTool;
+    private final PaymentExecutionTool paymentExecutionTool;
 
     public String processMessage(ChatRequest request) {
         String conversationId = String.valueOf(request.getConversationId());
@@ -35,7 +39,7 @@ public class OrchestratorService {
                     request.getConversationId()
             );
 
-            Object[] tools = new Object[]{billAssistantTool, paymentAssistantTool};
+            Object[] tools = new Object[]{billAssistantTool, paymentExecutionTool, paymentQueryTool, paymentInsightsTool};
 
             String response = chatClient
                     .prompt()

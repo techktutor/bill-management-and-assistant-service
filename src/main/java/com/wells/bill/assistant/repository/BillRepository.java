@@ -12,10 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Repository
 public interface BillRepository extends JpaRepository<BillEntity, UUID> {
@@ -25,6 +22,8 @@ public interface BillRepository extends JpaRepository<BillEntity, UUID> {
             BillStatus status,
             LocalDate date
     );
+
+    List<BillEntity> findAllByUserIdAndIdIn(UUID userId, Set<UUID> ids);
 
     List<BillEntity> findByStatusIn(List<BillStatus> statuses);
 

@@ -1,26 +1,29 @@
 package com.wells.bill.assistant.store;
 
 import com.wells.bill.assistant.entity.ContextEntity;
+import com.wells.bill.assistant.exception.ContextMismatchException;
 import com.wells.bill.assistant.model.Context;
 import com.wells.bill.assistant.repository.ContextRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
 import java.util.UUID;
 
+@Slf4j
 @Component
+@Transactional
 @RequiredArgsConstructor
 public class ContextStore {
 
     private static final long EXPIRY_MS = 10 * 60 * 1000;
 
-    private final ContextRepository repository;
     private final Clock clock;
+    private final ContextRepository repository;
 
-    @Transactional
     public Context resolveContext(UUID contextId, UUID userId) {
         long now = clock.millis();
 
@@ -37,9 +40,8 @@ public class ContextStore {
 
     private ContextEntity refresh(ContextEntity entity, UUID userId, long now) {
         if (!entity.getUserId().equals(userId)) {
-            return repository.save(
-                    new ContextEntity(entity.getContextId(), userId, UUID.randomUUID(), now)
-            );
+            log.warn("Context ownership mismatch: contextId={}", entity.getContextId());
+            throw new ContextMismatchException("Context ownership mismatch");
         }
 
         if (isExpired(entity, now)) {
@@ -57,7 +59,11 @@ public class ContextStore {
                     new ContextEntity(contextId, userId, UUID.randomUUID(), now)
             );
         } catch (DataIntegrityViolationException e) {
-            return repository.findById(contextId).orElseThrow();
+            log.warn("Context already exists, reloading: {}", contextId);
+            return repository.findById(contextId)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "Context creation race failed for contextId=" + contextId
+                    ));
         }
     }
 

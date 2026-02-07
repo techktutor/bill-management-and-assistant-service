@@ -44,7 +44,7 @@ public class CustomerEntity {
     @Column(name = "external_customer_id", length = 64, unique = true)
     private String externalCustomerId;
 
-    @Column(name = "user_id")
+    @Column(name = "user_id", nullable = false, unique = true, updatable = false)
     private UUID userId;
 
     /* =======================

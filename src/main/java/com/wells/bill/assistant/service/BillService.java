@@ -15,8 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -216,4 +218,15 @@ public class BillService {
                 .map(BillMapper::toDetail)
                 .toList();
     }
+
+    public Map<UUID, BillDetail> getBillsByIds(UUID userId, Set<UUID> billIds) {
+        log.info("Fetching bills for userId={} and billIds={}", userId, billIds);
+        return billRepository.findAllByUserIdAndIdIn(userId, billIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        BillEntity::getId,
+                        BillMapper::toDetail
+                ));
+    }
+
 }
