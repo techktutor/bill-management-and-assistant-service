@@ -108,7 +108,7 @@ export default function Chat() {
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b">
         <span className="text-2xl">🤖</span>
-        <h2 className="text-lg font-semibold">Bill Assistant</h2>
+        <h2 className="text-lg font-semibold">Eagle</h2>
       </div>
 
       {/* Messages */}
@@ -194,7 +194,7 @@ function getWelcomeMessage() {
     {
       from: "bot",
       text:
-        "Hi! I’m your Bill Assistant 🤖. I can help you pay bills, check payments, or answer questions.",
+        "Hi Durgesh, welcome. I’m Eagle, your Bill Assistant. I can help you manage bill payments securely, check payment status, and answer billing-related questions. How may I assist you today?",
     },
   ];
 }

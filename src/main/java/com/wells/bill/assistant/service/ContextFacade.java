@@ -31,7 +31,6 @@ public class ContextFacade {
 
             response.setHeader("Cache-Control", "no-store");
             return context;
-
         } catch (ContextMismatchException ex) {
 
             deleteCookie(response, CONTEXT_COOKIE);

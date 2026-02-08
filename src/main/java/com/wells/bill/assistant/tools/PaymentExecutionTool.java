@@ -206,7 +206,11 @@ public class PaymentExecutionTool {
         req.setIdempotencyKey(idempotencyKey);
         req.setExecutedBy(ExecutedBy.AI_SUGGESTED);
 
-        paymentService.createPaymentIntent(req);
+        try {
+            paymentService.createPaymentIntent(req);
+        } catch (Exception e) {
+            return String.format("❌ Failed to create payment intent: %s", e.getMessage());
+        }
 
         // One-time token cleanup
         confirmationStore.delete(userId);

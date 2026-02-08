@@ -4,9 +4,9 @@ services:
     container_name: bill-assistant-db-store
     restart: always
     environment:
-      POSTGRES_DB: bill_db_store
-      POSTGRES_USER: bill_db_user
-      POSTGRES_PASSWORD: bill_db_password
+      POSTGRES_DB: ${db_name}
+      POSTGRES_USER: ${db_user}
+      POSTGRES_PASSWORD: ${db_pwd}
     ports:
       - "5432:5432"
     volumes:

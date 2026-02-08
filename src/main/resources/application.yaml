@@ -37,18 +37,18 @@ spring:
     vertex:
       ai:
         embedding:
-          project-id: ${VERTEX_PROJECT_ID:gc-vertex-spring-ai-project}
-          location: ${VERTEX_LOCATION:us-central1}
+          project-id: ${VERTEX_PROJECT_ID}
+          location: ${VERTEX_LOCATION}
           text:
             options:
-              model: ${VERTEX_EMBEDDING_MODEL:text-embedding-004}
+              model: ${VERTEX_EMBEDDING_MODEL}
 
         gemini:
-          project-id: ${VERTEX_PROJECT_ID:gc-vertex-spring-ai-project}
-          location: ${VERTEX_LOCATION:us-central1}
+          project-id: ${VERTEX_PROJECT_ID}
+          location: ${VERTEX_LOCATION}
           chat:
             options:
-              model: ${VERTEX_GEMINI_MODEL:gemini-2.0-flash}
+              model: ${VERTEX_GEMINI_MODEL}
               temperature: 0.5
 
     vectorstore:
