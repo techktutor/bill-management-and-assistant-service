@@ -41,4 +41,6 @@ public class PaymentResponse {
     private Instant createdAt;
 
     private Instant updatedAt;
+
+    private String method;
 }

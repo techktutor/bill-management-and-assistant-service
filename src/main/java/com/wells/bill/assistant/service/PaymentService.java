@@ -295,6 +295,7 @@ public class PaymentService {
         r.setFailureReason(p.getFailureReason());
         r.setCreatedAt(p.getCreatedAt());
         r.setUpdatedAt(p.getUpdatedAt());
+        r.setMethod(p.getExecutedBy().name());
         return r;
     }
 }

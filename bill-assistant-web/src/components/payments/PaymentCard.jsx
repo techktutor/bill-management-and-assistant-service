@@ -50,7 +50,19 @@ export default function PaymentCard({ payment }) {
           />
 
           <p className="text-sm text-slate-500 mt-1">
-            Txn Ref: {payment.referenceId}
+            Type: {payment.paymentType}
+          </p>
+
+          <p className="text-sm text-slate-500 mt-1">
+              Date: {payment.scheduledDate}
+          </p>
+
+          <p className="text-sm text-slate-500 mt-1">
+              Txn Ref: {payment.gatewayReference}
+          </p>
+
+          <p className="text-sm text-slate-500 mt-1">
+              Executed At: {payment.executedAt}
           </p>
 
           <p className="text-xs text-slate-400 mt-2">
@@ -75,7 +87,7 @@ export default function PaymentCard({ payment }) {
                   <b>Method:</b> {payment.method || "N/A"}
                 </div>
                 <div>
-                  <b>Date:</b>{" "}
+                  <b>Created Date:</b>{" "}
                   {payment.createdAt
                     ? new Date(payment.createdAt).toLocaleString("en-IN")
                     : "N/A"}

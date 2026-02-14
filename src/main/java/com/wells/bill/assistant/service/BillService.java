@@ -186,8 +186,9 @@ public class BillService {
     private BillDetail transition(UUID billId, UUID userId, BillStatus next) {
         BillEntity bill = getEntityOrThrow(billId, userId);
 
+        BillStatus current = bill.getStatus();
         BillStateMachine.validateTransition(
-                bill.getStatus(),
+                current,
                 next
         );
 
@@ -196,7 +197,7 @@ public class BillService {
         BillDetail billDetail = BillMapper.toDetail(
                 billRepository.save(bill)
         );
-        log.info("Transitioned billId={} from {} to {}", billId, bill.getStatus(), next);
+        log.info("Transitioned billId={} from {} to {}", billId, current, next);
         return billDetail;
     }
 
