@@ -1,8 +1,14 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/bill_db_store
-    username: bill_db_user
-    password: bill_db_password
+    url: jdbc:postgresql://localhost:5432/${db_name}
+    username: ${db_user}
+    password: ${db_pwd}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 10
+      idle-timeout: 30000
+      pool-name: BillHikariPool
 
   jpa:
     hibernate:

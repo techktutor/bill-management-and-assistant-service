@@ -13,4 +13,4 @@ spring:
       memory:
         repository:
           jdbc:
-            initialize-schema: ALWAYS
+            initialize-schema: never
