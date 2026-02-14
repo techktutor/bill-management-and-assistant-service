@@ -89,7 +89,8 @@ export default function Payments() {
   }, {});
 
   return (
-    <div>
+    // ✅ Stripe Dashboard Container Fix
+    <div className="max-w-6xl mx-auto px-4">
       {/* Title */}
       <h2 className="text-2xl font-bold mb-6">
         Payments
@@ -132,11 +133,11 @@ export default function Payments() {
         </p>
       )}
 
-      {/* ✅ Payments List */}
-      <div className="space-y-4">
+      {/* ✅ Stripe Grid Layout */}
+      <div className="grid gap-5 sm:grid-cols-2">
         {visiblePayments.map((payment, index) => (
           <motion.div
-            key={payment.id || payment.referenceId || index} // ✅ FIXED KEY
+            key={payment.id || payment.referenceId || index}
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
@@ -153,9 +154,9 @@ export default function Payments() {
       {visibleCount < filteredPayments.length && (
         <div
           ref={loadMoreRef}
-          className="flex justify-center py-8"
+          className="flex justify-center py-10"
         >
-          <div className="h-6 w-6 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin" />
+          <div className="h-7 w-7 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin" />
         </div>
       )}
     </div>

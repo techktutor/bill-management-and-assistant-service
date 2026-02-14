@@ -1,145 +1,106 @@
 import { useEffect, useState } from "react";
 import { getBills } from "../api/billsApi";
-import { useNavigate } from "react-router-dom";
-import Money from "../components/common/Money";
-import DueDateBadge from "../components/common/DueDateBadge";
 
-const confidenceColor = {
-  HIGH_CONFIDENCE: "text-green-600",
-  MEDIUM_CONFIDENCE: "text-yellow-600",
-  LOW_CONFIDENCE: "text-red-600",
-};
+import BillCard from "../components/BillCard";
 
-const confidenceLabel = {
-  HIGH_CONFIDENCE: "HIGH",
-  MEDIUM_CONFIDENCE: "MEDIUM",
-  LOW_CONFIDENCE: "LOW",
-};
-
-const billStatusColor = {
-  PAID: "text-green-600",
-  UNPAID: "text-red-600",
-  PENDING: "text-yellow-600",
-};
+/* -------------------------------
+   Bills Page
+-------------------------------- */
 
 export default function Bills() {
   const [bills, setBills] = useState([]);
+
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const navigate = useNavigate();
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  /* -------------------------------
+     Fetch Bills
+  -------------------------------- */
+
+  const fetchBills = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await getBills(page);
+
+      setBills(res.content ?? []);
+      setTotalPages(res.totalPages ?? 0);
+    } catch {
+      setError("❌ Failed to load bills.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    getBills(page).then((p) => {
-      setBills(p.content ?? []);
-      setTotalPages(p.totalPages ?? 0);
-    });
+    fetchBills();
   }, [page]);
+
+  /* -------------------------------
+     UI States
+  -------------------------------- */
+
+  if (loading) {
+    return <p className="text-slate-500">Loading bills...</p>;
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-600 font-medium">
+        {error}
+        <button
+          onClick={fetchBills}
+          className="ml-4 px-3 py-1 bg-red-600 text-white rounded"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">Your Bills</h2>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {bills.map((b) => (
-          <div
-            key={b.id}
-            className="relative bg-white rounded-xl shadow p-4 flex flex-col"
-          >
-            {/* Provider + Status */}
-            <div className="flex justify-between mb-2">
-              <h3 className="font-semibold">
-                {b.providerName || "Unknown Provider"}
-              </h3>
-
-              <span
-                className={`text-xs font-medium ${
-                  billStatusColor[b.status]
-                }`}
-              >
-                {b.status}
-              </span>
-            </div>
-
-            {/* Amount */}
-            <Money
-              value={b.amountDue}
-              className="text-lg font-semibold"
-            />
-
-            {/* Due date */}
-            <div className="flex items-center justify-between mt-1">
-              <p className="text-sm text-slate-500">
-                Due: {b.dueDate}
-              </p>
-
-              <DueDateBadge
-                dueDate={b.dueDate}
-                status={b.status}
-              />
-            </div>
-
-            {/* Ask Bot (UNCHANGED) */}
-            <div className="mt-auto pt-4">
-              <button
-                onClick={() =>
-                  navigate("/chat", {
-                    state: { message: `Help me with bill ${b.id}` },
-                  })
-                }
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 rounded-lg"
-              >
-                Ask Bot
-              </button>
-            </div>
-
-            {/* Confidence badge (bottom-right) */}
-            <span
-              className={`group absolute bottom-2 right-2 text-xs font-semibold
-                px-2 py-0.5 rounded-full bg-slate-100 cursor-help
-                ${confidenceColor[b.confidenceDecision]}
-                animate-fadeIn
-              `}
-            >
-              {confidenceLabel[b.confidenceDecision]}
-
-              {/* Tooltip */}
-              <span
-                className="absolute bottom-full right-0 mb-1 w-max max-w-[160px]
-                  rounded bg-slate-900 text-white text-[10px]
-                  px-2 py-1 opacity-0 group-hover:opacity-100
-                  transition-opacity duration-200
-                  pointer-events-none
-                "
-              >
-                Data confidence based on bill text extraction accuracy
-              </span>
-            </span>
-          </div>
-        ))}
-      </div>
+      {/* Empty State */}
+      {bills.length === 0 ? (
+        <p className="text-slate-500">🎉 No bills found.</p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {bills.map((bill) => (
+            <BillCard key={bill.id} bill={bill} onRefresh={fetchBills} />
+          ))}
+        </div>
+      )}
 
       {/* Pagination */}
-      <div className="flex justify-center gap-4 mt-6">
-        <button
-          disabled={page === 0}
-          onClick={() => setPage((p) => p - 1)}
-          className="px-4 py-2 bg-white rounded shadow disabled:opacity-50"
-        >
-          Prev
-        </button>
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-4 mt-8">
+          <button
+            disabled={page === 0}
+            onClick={() => setPage((p) => p - 1)}
+            className="px-4 py-2 bg-white rounded shadow disabled:opacity-50"
+          >
+            Prev
+          </button>
 
-        <span className="text-sm text-slate-600 mt-2">
-          Page {page + 1} of {totalPages}
-        </span>
+          <span className="text-sm text-slate-600 mt-2">
+            Page {page + 1} of {totalPages}
+          </span>
 
-        <button
-          disabled={page + 1 >= totalPages}
-          onClick={() => setPage((p) => p + 1)}
-          className="px-4 py-2 bg-white rounded shadow disabled:opacity-50"
-        >
-          Next
-        </button>
-      </div>
+          <button
+            disabled={page + 1 >= totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            className="px-4 py-2 bg-white rounded shadow disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
