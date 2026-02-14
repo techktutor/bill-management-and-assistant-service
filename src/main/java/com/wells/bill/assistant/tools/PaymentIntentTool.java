@@ -4,7 +4,7 @@ import com.wells.bill.assistant.exception.InvalidUserInputException;
 import com.wells.bill.assistant.model.*;
 import com.wells.bill.assistant.service.BillService;
 import com.wells.bill.assistant.service.CustomerService;
-import com.wells.bill.assistant.service.PaymentEmailService;
+import com.wells.bill.assistant.service.SendEmailService;
 import com.wells.bill.assistant.service.PaymentService;
 import com.wells.bill.assistant.store.PaymentConfirmationStoreInMemory;
 import com.wells.bill.assistant.util.ConversationContextHolder;
@@ -25,7 +25,7 @@ import java.util.UUID;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class PaymentExecutionTool {
+public class PaymentIntentTool {
 
     private static final Duration CONFIRMATION_TTL = Duration.ofMinutes(5);
     private static final int MAX_SCHEDULE_DAYS = 365;
@@ -33,7 +33,7 @@ public class PaymentExecutionTool {
     private final BillService billService;
     private final PaymentService paymentService;
     private final CustomerService customerService;
-    private final PaymentEmailService paymentEmailService;
+    private final SendEmailService sendEmailService;
     private final PaymentConfirmationStoreInMemory confirmationStore;
 
     /* =====================================================
@@ -125,7 +125,7 @@ public class PaymentExecutionTool {
         }
 
         // Send OTP via email (LLM never sees token)
-        paymentEmailService.sendPaymentConfirmationTokenEmail(
+        sendEmailService.sendPaymentConfirmationTokenEmail(
                 bill.providerName(),
                 bill.amountDue().amount(),
                 scheduledDate,
@@ -267,7 +267,7 @@ public class PaymentExecutionTool {
         }
 
         // Resend SAME token (no regeneration)
-        paymentEmailService.sendPaymentConfirmationTokenEmail(
+        sendEmailService.sendPaymentConfirmationTokenEmail(
                 bill.providerName(),
                 bill.amountDue().amount(),
                 stored.scheduledDate(),

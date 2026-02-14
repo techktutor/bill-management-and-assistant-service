@@ -1,8 +1,8 @@
 package com.wells.bill.assistant.service;
 
 import com.wells.bill.assistant.entity.BillEntity;
-import com.wells.bill.assistant.model.BillStatus;
 import com.wells.bill.assistant.model.BillDetail;
+import com.wells.bill.assistant.model.BillStatus;
 import com.wells.bill.assistant.repository.BillRepository;
 import com.wells.bill.assistant.util.BillMapper;
 import com.wells.bill.assistant.util.BillStateMachine;
@@ -40,7 +40,7 @@ public class BillService {
 
     @Transactional(readOnly = true)
     public Page<BillDetail> getBills(UUID userId, Pageable pageable) {
-        log.info("Listing bills for userId={}, page={}", userId, pageable);
+        log.info("Listing all bills for userId={}", userId);
         return billRepository.findByUserId(userId, pageable)
                 .map(BillMapper::toDetail);
     }
@@ -134,7 +134,6 @@ public class BillService {
     }
 
     public BillDetail markVerified(UUID billId, UUID userId) {
-        log.info("Marking billId={} as VERIFIED", billId);
         return transition(billId, userId, BillStatus.VERIFIED);
     }
 
@@ -194,15 +193,15 @@ public class BillService {
 
         bill.setStatus(next);
 
-        log.info("Transitioned billId={} to status={}", billId, next);
-
-        return BillMapper.toDetail(
+        BillDetail billDetail = BillMapper.toDetail(
                 billRepository.save(bill)
         );
+        log.info("Transitioned billId={} from {} to {}", billId, bill.getStatus(), next);
+        return billDetail;
     }
 
     private BillEntity getEntityOrThrow(UUID billId, UUID userId) {
-        log.info("Fetching bill entity for billId={} and userId={}", billId, userId);
+        log.debug("Fetching bill entity for billId={} and userId={}", billId, userId);
         return billRepository.findByIdAndUserId(billId, userId)
                 .orElseThrow(() ->
                         new IllegalArgumentException(

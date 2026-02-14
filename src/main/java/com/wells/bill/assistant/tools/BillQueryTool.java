@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class BillAssistantTool {
+public class BillQueryTool {
 
     private final BillService billService;
 
@@ -198,7 +198,7 @@ public class BillAssistantTool {
                     Use only after bill data has been reviewed.
                     """
     )
-    public BillDetail markBillAsVerified(@ToolParam(description = "Bill provider name") String providerName) {
+    public String markBillAsVerified(@ToolParam(description = "Bill provider name") String providerName) {
         UUID userId = ConversationContextHolder.getUserId();
         if (userId == null) {
             throw new InvalidUserInputException("No user context bound to tool execution");
@@ -207,8 +207,9 @@ public class BillAssistantTool {
         UUID conversationId = ConversationContextHolder.getConversationId();
 
         log.info("BillAssistantTool: Marking BillAsVerified for providerName={}, userId={}, conversationId={}", providerName, userId, conversationId);
-
-        return billService.markVerified(getDetails(userId, providerName).id(), userId);
+        BillDetail billDetail = billService.markVerified(getDetails(userId, providerName).id(), userId);
+        log.info("Marked billId={} as VERIFIED", billDetail.id());
+        return "Bill from provider '%s' has been marked as VERIFIED.".formatted(billDetail.providerName());
     }
 
     @Tool(

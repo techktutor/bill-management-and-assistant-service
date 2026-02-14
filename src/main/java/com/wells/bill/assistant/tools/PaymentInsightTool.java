@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class PaymentInsightsTool {
+public class PaymentInsightTool {
 
     private final PaymentService paymentService;
     private final BillService billService;

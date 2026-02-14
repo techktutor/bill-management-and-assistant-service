@@ -1,9 +1,9 @@
 package com.wells.bill.assistant.service;
 
 import com.wells.bill.assistant.model.ChatRequest;
-import com.wells.bill.assistant.tools.BillAssistantTool;
-import com.wells.bill.assistant.tools.PaymentExecutionTool;
-import com.wells.bill.assistant.tools.PaymentInsightsTool;
+import com.wells.bill.assistant.tools.BillQueryTool;
+import com.wells.bill.assistant.tools.PaymentIntentTool;
+import com.wells.bill.assistant.tools.PaymentInsightTool;
 import com.wells.bill.assistant.tools.PaymentQueryTool;
 import com.wells.bill.assistant.util.ConversationContextHolder;
 import lombok.RequiredArgsConstructor;
@@ -22,10 +22,10 @@ public class OrchestratorService {
     private static final String DEFAULT_RESPONSE = "I’m sorry, I couldn’t process your request safely. Please try again.";
 
     private final ChatClient chatClient;
-    private final BillAssistantTool billAssistantTool;
+    private final BillQueryTool billQueryTool;
     private final PaymentQueryTool paymentQueryTool;
-    private final PaymentInsightsTool paymentInsightsTool;
-    private final PaymentExecutionTool paymentExecutionTool;
+    private final PaymentInsightTool paymentInsightTool;
+    private final PaymentIntentTool paymentIntentTool;
 
     public String processMessage(ChatRequest request) {
         String conversationId = String.valueOf(request.getConversationId());
@@ -39,7 +39,7 @@ public class OrchestratorService {
                     request.getConversationId()
             );
 
-            Object[] tools = new Object[]{billAssistantTool, paymentExecutionTool, paymentQueryTool, paymentInsightsTool};
+            Object[] tools = new Object[]{billQueryTool, paymentIntentTool, paymentQueryTool, paymentInsightTool};
 
             String response = chatClient
                     .prompt()
@@ -50,13 +50,12 @@ public class OrchestratorService {
                     .call()
                     .content();
 
-            log.info("LLM response for conversationId= {} is: {}", conversationId, response);
-
             if (response == null || response.isBlank()) {
                 log.info("Empty LLM response for conversationId={}", conversationId);
                 return DEFAULT_RESPONSE;
             }
 
+            log.info("LLM response for conversationId= {} is: {}", conversationId, response);
             return response;
         } catch (Exception e) {
             log.error("Error processing message for conversationId={}", conversationId, e);

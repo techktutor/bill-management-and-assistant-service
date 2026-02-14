@@ -34,7 +34,7 @@ public class PaymentService {
 
     private final BillService billService;
     private final PaymentRepository paymentRepository;
-    private final PaymentExecutorService paymentExecutorService;
+    private final PaymentExecutionService paymentExecutionService;
 
     /**
      * Step 1: Create payment intent
@@ -164,7 +164,7 @@ public class PaymentService {
         payment.setExecutedBy(req.getExecutedBy());
         paymentRepository.save(payment);
         try {
-            GatewayResponse resp = paymentExecutorService.executeSinglePayment(payment);
+            GatewayResponse resp = paymentExecutionService.executeSinglePayment(payment);
             if (resp != null && resp.success()) {
                 markSuccess(payment, resp.referenceId());
                 billService.markPaid(payment.getBillId(), payment.getId(), payment.getUserId());

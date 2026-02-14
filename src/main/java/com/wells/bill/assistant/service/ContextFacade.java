@@ -48,7 +48,7 @@ public class ContextFacade {
     private void ensureCustomer(Context context) {
         UUID customerId = customerService.createCustomerIfNotExists(context.userId());
 
-        log.info("Resolved context: contextId={}, userId={}, customerId={}",
+        log.debug("Resolved context: contextId={}, userId={}, customerId={}",
                 context.contextId(),
                 context.userId(),
                 customerId);

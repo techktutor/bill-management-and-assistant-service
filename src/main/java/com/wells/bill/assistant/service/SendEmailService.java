@@ -12,7 +12,7 @@ import java.time.LocalDate;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PaymentEmailService {
+public class SendEmailService {
 
     private final JavaMailSender mailSender;
 

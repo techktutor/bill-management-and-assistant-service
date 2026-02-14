@@ -11,9 +11,9 @@ import java.time.LocalDate;
 
 @Component
 @RequiredArgsConstructor
-public class BillOverdueScheduler {
+public class OverdueScheduler {
 
-    private static final Logger log = LoggerFactory.getLogger(BillOverdueScheduler.class);
+    private static final Logger log = LoggerFactory.getLogger(OverdueScheduler.class);
 
     private final BillService billService;
 

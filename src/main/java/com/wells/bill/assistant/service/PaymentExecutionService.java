@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PaymentExecutorService {
+public class PaymentExecutionService {
 
     private final PaymentGatewayClient gatewayClient;
 

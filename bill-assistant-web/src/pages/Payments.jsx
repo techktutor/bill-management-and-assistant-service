@@ -1,100 +1,163 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getPayments } from "../api/paymentsApi";
-import { useNavigate } from "react-router-dom";
-import Money from "../components/common/Money";
 
-const statusColor = {
-  SUCCESS: "text-green-600 bg-green-100",
-  PROCESSING: "text-yellow-700 bg-yellow-100",
-  FAILED: "text-red-600 bg-red-100",
-};
+import PaymentCard from "../components/payments/PaymentCard";
+import PaymentsSkeleton from "../components/payments/PaymentsSkeleton";
 
-const confidenceColor = {
-  HIGH_CONFIDENCE: "text-green-600",
-  MEDIUM_CONFIDENCE: "text-yellow-600",
-  LOW_CONFIDENCE: "text-red-600",
-};
+import { motion } from "framer-motion";
+
+const FILTERS = ["ALL", "SUCCESS", "FAILED", "PROCESSING"];
+const PAGE_SIZE = 6;
 
 export default function Payments() {
   const [payments, setPayments] = useState([]);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
 
+  const [filter, setFilter] = useState("ALL");
+  const [search, setSearch] = useState("");
+
+  // Infinite scroll visible count
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  // Observer trigger element
+  const loadMoreRef = useRef(null);
+
+  // ✅ Fetch payments
   useEffect(() => {
-    getPayments().then(setPayments);
+    async function loadPayments() {
+      try {
+        const data = await getPayments();
+        setPayments(data || []);
+      } catch (err) {
+        console.error("Failed to load payments:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadPayments();
   }, []);
+
+  // ✅ Filter + Search logic
+  const filteredPayments = payments.filter((p) => {
+    const matchesStatus =
+      filter === "ALL" || p.status === filter;
+
+    const matchesSearch =
+      p.providerName?.toLowerCase().includes(search.toLowerCase()) ||
+      p.referenceId?.toLowerCase().includes(search.toLowerCase());
+
+    return matchesStatus && matchesSearch;
+  });
+
+  // Visible slice
+  const visiblePayments = filteredPayments.slice(0, visibleCount);
+
+  // ✅ Reset pagination when filter/search changes
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filter, search]);
+
+  // ✅ Infinite scroll observer
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries[0].isIntersecting &&
+          visibleCount < filteredPayments.length
+        ) {
+          setVisibleCount((prev) => prev + PAGE_SIZE);
+        }
+      },
+      { threshold: 1 }
+    );
+
+    observer.observe(loadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [visibleCount, filteredPayments.length]);
+
+  // ✅ Status counts
+  const counts = FILTERS.reduce((acc, f) => {
+    acc[f] =
+      f === "ALL"
+        ? payments.length
+        : payments.filter((p) => p.status === f).length;
+    return acc;
+  }, {});
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Payments</h2>
+      {/* Title */}
+      <h2 className="text-2xl font-bold mb-6">
+        Payments
+      </h2>
 
-      <div className="space-y-4">
-        {payments.map((p) => (
-          <div
-            key={p.id}
-            className="relative bg-white rounded-xl shadow p-4"
+      {/* ✅ Search */}
+      <input
+        type="text"
+        placeholder="Search by provider or transaction ID..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full mb-5 px-4 py-2 border rounded-xl text-sm
+          focus:ring-2 focus:ring-blue-500 outline-none"
+      />
+
+      {/* ✅ Filters with counts */}
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {FILTERS.map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+              filter === f
+                ? "bg-blue-600 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
           >
-            {/* Header */}
-            <div className="flex justify-between items-start">
-              <h3 className="font-semibold">
-                {p.providerName || "Unknown Provider"}
-              </h3>
-
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  statusColor[p.status]
-                }`}
-              >
-                {p.status}
-              </span>
-            </div>
-
-            {/* Amount */}
-            <Money
-              value={{ amount: p.amount, currency: p.currency }}
-              className="text-lg font-semibold mt-1"
-            />
-
-            {/* Meta */}
-            <div className="text-sm text-slate-500 mt-2 space-y-1">
-              <div>Paid on: {p.paidAt}</div>
-              <div>Method: {p.method}</div>
-              <div>Txn Ref: {p.referenceId}</div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => navigate(`/bills/${p.billId}`)}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 text-sm py-2 rounded-lg"
-              >
-                View Bill
-              </button>
-
-              <button
-                onClick={() =>
-                  navigate("/chat", {
-                    state: {
-                      message: `Explain payment ${p.referenceId}`,
-                    },
-                  })
-                }
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 rounded-lg"
-              >
-                Ask Bot
-              </button>
-            </div>
-
-            {/* Confidence (bottom-right, subtle) */}
-            <span
-              className={`absolute bottom-2 right-2 text-xs ${
-                confidenceColor[p.confidenceDecision]
-              }`}
-            >
-              {p.confidenceDecision?.replace("_CONFIDENCE", "")}
-            </span>
-          </div>
+            {f} ({counts[f]})
+          </button>
         ))}
       </div>
+
+      {/* ✅ Skeleton Loader */}
+      {loading && <PaymentsSkeleton />}
+
+      {/* ✅ Empty State */}
+      {!loading && filteredPayments.length === 0 && (
+        <p className="text-slate-500 text-sm">
+          No payments found.
+        </p>
+      )}
+
+      {/* ✅ Payments List */}
+      <div className="space-y-4">
+        {visiblePayments.map((payment, index) => (
+          <motion.div
+            key={payment.id || payment.referenceId || index} // ✅ FIXED KEY
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              duration: 0.3,
+              delay: index * 0.05,
+            }}
+          >
+            <PaymentCard payment={payment} />
+          </motion.div>
+        ))}
+      </div>
+
+      {/* ✅ Infinite Scroll Spinner */}
+      {visibleCount < filteredPayments.length && (
+        <div
+          ref={loadMoreRef}
+          className="flex justify-center py-8"
+        >
+          <div className="h-6 w-6 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin" />
+        </div>
+      )}
     </div>
   );
 }

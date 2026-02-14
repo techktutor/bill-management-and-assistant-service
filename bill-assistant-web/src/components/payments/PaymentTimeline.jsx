@@ -12,13 +12,20 @@ function Step({ label, active, completed, failed }) {
     : completed
     ? "text-green-600"
     : active
-    ? "text-slate-800"
+    ? "text-slate-900"
     : "text-slate-400";
 
   return (
-    <div className="flex items-center gap-2">
-      <span className={`h-2.5 w-2.5 rounded-full ${dotColor}`} />
-      <span className={`text-xs font-medium ${textColor}`}>
+    <div className="flex flex-col items-center gap-1 min-w-[60px]">
+      {/* Dot */}
+      <span
+        className={`h-3 w-3 rounded-full ${dotColor} ${
+          active ? "animate-pulse" : ""
+        }`}
+      />
+
+      {/* Label */}
+      <span className={`text-[11px] font-semibold ${textColor}`}>
         {label}
       </span>
     </div>
@@ -54,8 +61,12 @@ function resolvePhase(status) {
 export default function PaymentTimeline({ status }) {
   const phase = resolvePhase(status);
 
+  // Connector fill helper
+  const connector = (done) =>
+    done ? "bg-green-400" : "bg-slate-300";
+
   return (
-    <div className="flex items-center gap-4 mt-4">
+    <div className="flex items-center justify-between mt-4">
       {/* Created */}
       <Step
         label="Created"
@@ -63,7 +74,7 @@ export default function PaymentTimeline({ status }) {
         active={phase === "CREATED"}
       />
 
-      <div className="flex-1 h-px bg-slate-300" />
+      <div className={`flex-1 h-[2px] mx-1 ${connector(phase !== "CREATED")}`} />
 
       {/* Approval */}
       <Step
@@ -72,7 +83,11 @@ export default function PaymentTimeline({ status }) {
         active={phase === "APPROVAL"}
       />
 
-      <div className="flex-1 h-px bg-slate-300" />
+      <div
+        className={`flex-1 h-[2px] mx-1 ${connector(
+          ["PROCESSING", "SUCCESS", "FAILED"].includes(phase)
+        )}`}
+      />
 
       {/* Processing */}
       <Step
@@ -81,17 +96,15 @@ export default function PaymentTimeline({ status }) {
         active={phase === "PROCESSING"}
       />
 
-      <div className="flex-1 h-px bg-slate-300" />
+      <div
+        className={`flex-1 h-[2px] mx-1 ${connector(
+          ["SUCCESS", "FAILED"].includes(phase)
+        )}`}
+      />
 
       {/* Result */}
       <Step
-        label={
-          phase === "FAILED"
-            ? "Failed"
-            : phase === "SUCCESS"
-            ? "Success"
-            : "Result"
-        }
+        label={phase === "FAILED" ? "Failed" : "Success"}
         completed={phase === "SUCCESS"}
         failed={phase === "FAILED"}
         active={phase === "PROCESSING"}

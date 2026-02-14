@@ -194,7 +194,7 @@ function getWelcomeMessage() {
     {
       from: "bot",
       text:
-        "Hi Durgesh, welcome. I’m Eagle, your Bill Assistant. I can help you manage bill payments securely, check payment status, and answer billing-related questions. How may I assist you today?",
+        "Hi Durgesh, welcome! I’m Eagle, your AI Powered Bill Assistant. I can help you securely manage your bills and payments, and answer any related questions. How can I assist you today?",
     },
   ];
 }
