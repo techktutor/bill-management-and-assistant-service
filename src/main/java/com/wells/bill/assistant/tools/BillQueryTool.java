@@ -248,8 +248,8 @@ public class BillQueryTool {
                 """.formatted(
                 bill.billCategory(),
                 bill.providerName(),
-                bill.amountDue(),
                 bill.amountDue().currency().getSymbol(),
+                bill.amountDue().amount(),
                 bill.billingPeriod().start(),
                 bill.billingPeriod().end(),
                 bill.dueDate(),
