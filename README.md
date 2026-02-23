@@ -359,11 +359,13 @@ Sends alerts such as:
 
 ## Video Demo
 
-[video1353709731.mp4](docs/video1353709731.mp4)
+<video controls>
+  <source src="docs/video1353709731.mp4" type="video/mp4">
+  Your browser does not support the video tag. You can download the video here: [video file](docs/video1353709731.mp4)
+</video>
 
 ## 🏗️ Full System Architecture Diagram
-
-![AI-Powered Bill Management Architecture](./docs/architecture-diagram.png)
+![Final_architecture_diagram.png](docs/Final_architecture_diagram.png)
 
 ## 🏗️ Full System Flow Diagram
 ![AI-Powered Bill Management Flow](./docs/system-flow-diagram.png)
