@@ -357,6 +357,10 @@ Sends alerts such as:
 
 11. Notification Service sends payment receipt
 
+## Video Demo
+
+[video1353709731.mp4](docs/video1353709731.mp4)
+
 ## 🏗️ Full System Architecture Diagram
 
 ![AI-Powered Bill Management Architecture](./docs/architecture-diagram.png)
