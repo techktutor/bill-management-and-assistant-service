@@ -360,9 +360,11 @@ Sends alerts such as:
 ## Video Demo
 
 <video controls>
-  <source src="docs/video1353709731.mp4" type="video/mp4">
-  Your browser does not support the video tag. You can download the video here: [video file](docs/video1353709731.mp4)
+  <source src="https://techktutor.github.io/bill-management-and-assistant-service/video1353709731.mp4" type="video/mp4">
+  Your browser does not support the video tag. You can download the video here: [video file](https://techktutor.github.io/bill-management-and-assistant-service/video1353709731.mp4)
 </video>
+
+<!-- Note: Enable GitHub Pages for this repo with source = `main` and folder = `/docs` so this video is served as video/mp4 and will play inline on GitHub Pages. -->
 
 ## 🏗️ Full System Architecture Diagram
 ![Final_architecture_diagram.png](docs/Final_architecture_diagram.png)
