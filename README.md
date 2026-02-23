@@ -359,8 +359,6 @@ Sends alerts such as:
 
 ## Video Demo
 
-## Video Demo
-
 [![Watch the demo](https://img.youtube.com/vi/L9bDrb9m0mU/0.jpg)](https://youtu.be/L9bDrb9m0mU)
 
 If the embed is blocked by GitHub, watch on YouTube: https://youtu.be/L9bDrb9m0mU
