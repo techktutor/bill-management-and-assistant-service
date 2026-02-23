@@ -359,12 +359,11 @@ Sends alerts such as:
 
 ## Video Demo
 
-<video controls>
-  <source src="https://techktutor.github.io/bill-management-and-assistant-service/video1353709731.mp4" type="video/mp4">
-  Your browser does not support the video tag. You can download the video here: [video file](https://techktutor.github.io/bill-management-and-assistant-service/video1353709731.mp4)
-</video>
+## Video Demo
 
-<!-- Note: Enable GitHub Pages for this repo with source = `main` and folder = `/docs` so this video is served as video/mp4 and will play inline on GitHub Pages. -->
+[![Watch the demo](https://img.youtube.com/vi/L9bDrb9m0mU/0.jpg)](https://youtu.be/L9bDrb9m0mU)
+
+If the embed is blocked by GitHub, watch on YouTube: https://youtu.be/L9bDrb9m0mU
 
 ## 🏗️ Full System Architecture Diagram
 ![Final_architecture_diagram.png](docs/Final_architecture_diagram.png)
